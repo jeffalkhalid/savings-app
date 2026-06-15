@@ -58,7 +58,7 @@ export default function DashboardPage() {
         monthLabel={label}
       />
 
-      <Fab onClick={() => setShowAdd(true)} />
+      <Fab onClick={() => setShowAdd(true)} label="Ajouter une transaction" />
 
       {showAdd && (
         <AddModal

@@ -34,6 +34,9 @@ export default function PatrimoinePage() {
     () => buildPatrimoineSeries(assets, valuations),
     [assets, valuations]
   );
+  // Total = somme des current_value (via v_patrimoine). Invariant : current_value
+  // est tenu synchro à la dernière valuation par syncCurrentValue, donc ce total
+  // coïncide avec le dernier point de `series`. Deux sources, un seul réel.
   const total = lines.reduce((a, l) => a + Number(l.total_value), 0);
   const delta =
     series.length >= 2
@@ -67,7 +70,7 @@ export default function PatrimoinePage() {
         onSelect={setSelected}
       />
 
-      <Fab onClick={() => setShowCreate(true)} />
+      <Fab onClick={() => setShowCreate(true)} label="Ajouter un asset" />
 
       {showCreate && (
         <AssetModal
