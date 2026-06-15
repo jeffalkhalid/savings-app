@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/lib/cockpit/supabase";
 import { todayISO } from "@/lib/cockpit/format";
 import type { Category, Account } from "@/lib/cockpit/types";
@@ -27,6 +27,18 @@ export function AddModal({
   );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+
+  // Lists load asynchronously; seed the selects once they arrive if still empty.
+  useEffect(() => {
+    if (!categoryId && categories.length) setCategoryId(categories[0].id);
+  }, [categories, categoryId]);
+  useEffect(() => {
+    if (!accountId && accounts.length) {
+      setAccountId(
+        accounts.find((a) => a.name.includes("BNP"))?.id ?? accounts[0].id
+      );
+    }
+  }, [accounts, accountId]);
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
