@@ -7,12 +7,14 @@ export function TxnList({
   loading,
   error,
   monthLabel,
+  onSelect,
 }: {
   txns: Txn[];
   categories: Category[];
   loading: boolean;
   error: string | null;
   monthLabel: string;
+  onSelect: (txn: Txn) => void;
 }) {
   const nameOf = (id?: string | null) =>
     categories.find((c) => c.id === id)?.name;
@@ -31,7 +33,12 @@ export function TxnList({
       )}
       <div>
         {txns.map((t) => (
-          <TxnRow key={t.id} txn={t} categoryName={nameOf(t.category_id)} />
+          <TxnRow
+            key={t.id}
+            txn={t}
+            categoryName={nameOf(t.category_id)}
+            onSelect={() => onSelect(t)}
+          />
         ))}
       </div>
     </section>

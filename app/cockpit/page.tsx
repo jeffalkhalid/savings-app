@@ -10,12 +10,13 @@ import {
 import { computeMetrics } from "@/lib/cockpit/metrics";
 import { currentMonth } from "@/lib/cockpit/format";
 import { supabase } from "@/lib/cockpit/supabase";
+import type { Txn } from "@/lib/cockpit/types";
 import { MonthSwitcher } from "@/components/cockpit/MonthSwitcher";
 import { HeroBand } from "@/components/cockpit/HeroBand";
 import { StatStrip } from "@/components/cockpit/StatStrip";
 import { TxnList } from "@/components/cockpit/TxnList";
 import { Fab } from "@/components/cockpit/Fab";
-import { AddModal } from "@/components/cockpit/AddModal";
+import { TxnModal } from "@/components/cockpit/TxnModal";
 
 const monthLabelOf = (m: string) =>
   new Date(`${m}-01T00:00:00`).toLocaleDateString("fr-FR", {
@@ -27,6 +28,7 @@ export default function DashboardPage() {
   const user = useAuth();
   const [month, setMonth] = useState(currentMonth());
   const [showAdd, setShowAdd] = useState(false);
+  const [editTxn, setEditTxn] = useState<Txn | null>(null);
   const { txns, loading, error, refetch } = useTransactions(month);
   const { categories } = useCategories();
   const { accounts } = useAccounts();
@@ -56,19 +58,35 @@ export default function DashboardPage() {
         loading={loading}
         error={error}
         monthLabel={label}
+        onSelect={setEditTxn}
       />
 
-      <Fab onClick={() => setShowAdd(true)} label="Ajouter une transaction" />
+      <Fab onClick={() => setShowAdd(true)} />
 
       {showAdd && (
-        <AddModal
+        <TxnModal
           userId={user.id}
           categories={categories}
           accounts={accounts}
+          txn={null}
           onClose={() => setShowAdd(false)}
           onSaved={() => {
             refetch();
             setShowAdd(false);
+          }}
+        />
+      )}
+
+      {editTxn && (
+        <TxnModal
+          userId={user.id}
+          categories={categories}
+          accounts={accounts}
+          txn={editTxn}
+          onClose={() => setEditTxn(null)}
+          onSaved={() => {
+            refetch();
+            setEditTxn(null);
           }}
         />
       )}
