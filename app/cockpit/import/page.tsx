@@ -120,7 +120,12 @@ export default function ImportPage() {
         </button>
       </header>
 
-      {!rows && <ImportDropzone onFile={handleFile} />}
+      {!rows &&
+        (categories.length && accounts.length ? (
+          <ImportDropzone onFile={handleFile} />
+        ) : (
+          <p className="text-ink-muted text-sm">Chargement des catégories…</p>
+        ))}
       {error && <p className="text-strat-a text-sm mt-4">{error}</p>}
 
       {rows && (

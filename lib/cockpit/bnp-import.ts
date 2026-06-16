@@ -82,7 +82,9 @@ export function parseBnpSheet(rows: string[][]): ParsedRow[] {
 }
 
 export function rowKey(dateISO: string, amount: number): string {
-  return `${dateISO}|${amount}`;
+  // Number() normalise les deux côtés (montant parsé vs amount numeric de la DB
+  // renvoyé en string par PostgREST) pour que le dédoublonnage ne casse pas.
+  return `${dateISO}|${Number(amount)}`;
 }
 
 export function markDuplicates(

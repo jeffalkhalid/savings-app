@@ -10,6 +10,8 @@ export function ImportDropzone({ onFile }: { onFile: (file: File) => void }) {
         onChange={(e) => {
           const f = e.target.files?.[0];
           if (f) onFile(f);
+          // Reset pour permettre de re-sélectionner le même fichier après une erreur.
+          e.target.value = "";
         }}
       />
       <div className="font-display text-lg mb-1">Importer un relevé BNP</div>
