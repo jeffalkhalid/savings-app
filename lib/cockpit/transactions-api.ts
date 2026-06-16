@@ -52,3 +52,34 @@ export async function deleteTransaction(id: string): Promise<void> {
   const { error } = await supabase.from("transactions").delete().eq("id", id);
   if (error) throw new Error(error.message);
 }
+
+export type ImportRow = {
+  date: string; // ISO
+  amount: number; // signé brut (préservé tel quel)
+  description: string;
+  categoryId: string;
+  type: string;
+  accountId: string;
+};
+
+// Insert en masse. Préserve le montant signé (ne repasse PAS par signedAmount).
+export async function createTransactionsBulk(
+  userId: string,
+  rows: ImportRow[]
+): Promise<void> {
+  if (!rows.length) return;
+  const { error } = await supabase.from("transactions").insert(
+    rows.map((r) => ({
+      user_id: userId,
+      date: r.date,
+      amount: r.amount,
+      description: r.description,
+      merchant: r.description || null,
+      category_id: r.categoryId,
+      account_id: r.accountId,
+      type: r.type,
+      source: "import",
+    }))
+  );
+  if (error) throw new Error(error.message);
+}

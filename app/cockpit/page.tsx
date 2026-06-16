@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import {
   useAuth,
   useTransactions,
@@ -41,6 +42,9 @@ export default function DashboardPage() {
         <h1 className="font-display text-2xl">Cockpit</h1>
         <div className="flex items-center gap-2">
           <MonthSwitcher month={month} onChange={setMonth} />
+          <Link href="/cockpit/import" className="text-ink-muted text-sm">
+            Import
+          </Link>
           <button
             onClick={() => supabase.auth.signOut()}
             className="text-ink-muted text-sm"
