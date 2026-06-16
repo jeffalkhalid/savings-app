@@ -4,14 +4,17 @@ import { eur } from "@/lib/cockpit/format";
 export function TxnRow({
   txn,
   categoryName,
+  onSelect,
 }: {
   txn: Txn;
   categoryName?: string;
+  onSelect: () => void;
 }) {
   const neg = Number(txn.amount) < 0;
   return (
     <button
       type="button"
+      onClick={onSelect}
       className="w-full flex justify-between items-center py-3 border-b border-rule text-left"
     >
       <div>

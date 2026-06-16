@@ -1,44 +1,63 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/cockpit/supabase";
+import {
+  createTransaction,
+  updateTransaction,
+  deleteTransaction,
+} from "@/lib/cockpit/transactions-api";
 import { todayISO } from "@/lib/cockpit/format";
-import type { Category, Account } from "@/lib/cockpit/types";
+import type { Category, Account, Txn } from "@/lib/cockpit/types";
 
-export function AddModal({
+export function TxnModal({
   userId,
   categories,
   accounts,
+  txn,
   onClose,
   onSaved,
 }: {
   userId: string;
   categories: Category[];
   accounts: Account[];
+  txn: Txn | null;
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const [date, setDate] = useState(todayISO());
-  const [amount, setAmount] = useState("");
-  const [description, setDescription] = useState("");
-  const [categoryId, setCategoryId] = useState(categories[0]?.id ?? "");
+  const editing = !!txn;
+  const [date, setDate] = useState(txn?.date ?? todayISO());
+  const [amount, setAmount] = useState(
+    txn ? String(Math.abs(Number(txn.amount))) : ""
+  );
+  const [description, setDescription] = useState(txn?.description ?? "");
+  const [categoryId, setCategoryId] = useState(
+    txn?.category_id ?? categories[0]?.id ?? ""
+  );
   const [accountId, setAccountId] = useState(
-    accounts.find((a) => a.name.includes("BNP"))?.id ?? accounts[0]?.id ?? ""
+    txn?.account_id ??
+      accounts.find((a) => a.name.includes("BNP"))?.id ??
+      accounts[0]?.id ??
+      ""
   );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
-  // Lists load asynchronously; seed the selects once they arrive if still empty.
+  // Création : les listes chargent en async ; on seede les selects à leur arrivée
+  // si encore vides. (Le chemin édition seede toujours depuis txn.)
   useEffect(() => {
-    if (!categoryId && categories.length) setCategoryId(categories[0].id);
-  }, [categories, categoryId]);
+    if (!txn && !categoryId && categories.length) setCategoryId(categories[0].id);
+  }, [txn, categories, categoryId]);
   useEffect(() => {
-    if (!accountId && accounts.length) {
+    if (!txn && !accountId && accounts.length) {
       setAccountId(
         accounts.find((a) => a.name.includes("BNP"))?.id ?? accounts[0].id
       );
     }
-  }, [accounts, accountId]);
+  }, [txn, accounts, accountId]);
+
+  const fieldCls = "border border-rule rounded-lg px-3 py-3 bg-white text-base w-full";
+  const labelCls = "grid gap-1.5 text-[13px] text-ink-muted";
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,31 +72,42 @@ export function AddModal({
       setError("Montant invalide");
       return;
     }
-    const sign = cat.type === "income" ? 1 : -1;
-
-    setSaving(true);
-    const { error: e2 } = await supabase.from("transactions").insert({
-      user_id: userId,
+    const fields = {
       date,
-      amount: sign * amt,
-      description: description || cat.name,
-      merchant: description || null,
-      category_id: categoryId,
-      account_id: accountId,
-      type: cat.type,
-      source: "manual",
-    });
-    setSaving(false);
-    if (e2) {
-      setError(e2.message);
-      return;
+      absAmount: amt,
+      description: description.trim(),
+      categoryId,
+      categoryName: cat.name,
+      accountId,
+      categoryType: cat.type,
+    };
+    setSaving(true);
+    try {
+      if (editing && txn) await updateTransaction(txn.id, fields);
+      else await createTransaction(userId, fields);
+      onSaved();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erreur");
+      setSaving(false);
     }
-    onSaved();
   };
 
-  const field =
-    "border border-rule rounded-lg px-3 py-3 bg-white text-base w-full";
-  const labelCls = "grid gap-1.5 text-[13px] text-ink-muted";
+  const remove = async () => {
+    if (!txn) return;
+    if (!confirmDelete) {
+      setConfirmDelete(true);
+      return;
+    }
+    setError("");
+    setSaving(true);
+    try {
+      await deleteTransaction(txn.id);
+      onSaved();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erreur");
+      setSaving(false);
+    }
+  };
 
   return (
     <div
@@ -89,12 +119,10 @@ export function AddModal({
         onClick={(e) => e.stopPropagation()}
       >
         <header className="flex justify-between items-center mb-4">
-          <h2 className="font-display text-2xl">Nouvelle transaction</h2>
-          <button
-            className="text-ink-muted text-sm"
-            onClick={onClose}
-            type="button"
-          >
+          <h2 className="font-display text-2xl">
+            {editing ? "Modifier la transaction" : "Nouvelle transaction"}
+          </h2>
+          <button className="text-ink-muted text-sm" onClick={onClose} type="button">
             Annuler
           </button>
         </header>
@@ -102,7 +130,7 @@ export function AddModal({
           <label className={labelCls}>
             Montant (€)
             <input
-              className={field}
+              className={fieldCls}
               type="text"
               inputMode="decimal"
               autoFocus
@@ -115,7 +143,7 @@ export function AddModal({
           <label className={labelCls}>
             Description
             <input
-              className={field}
+              className={fieldCls}
               type="text"
               placeholder="Ex. Carrefour, Uber, café…"
               value={description}
@@ -125,7 +153,7 @@ export function AddModal({
           <label className={labelCls}>
             Catégorie
             <select
-              className={field}
+              className={fieldCls}
               value={categoryId}
               onChange={(e) => setCategoryId(e.target.value)}
               required
@@ -140,7 +168,7 @@ export function AddModal({
           <label className={labelCls}>
             Compte
             <select
-              className={field}
+              className={fieldCls}
               value={accountId}
               onChange={(e) => setAccountId(e.target.value)}
               required
@@ -155,7 +183,7 @@ export function AddModal({
           <label className={labelCls}>
             Date
             <input
-              className={field}
+              className={fieldCls}
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
@@ -169,6 +197,16 @@ export function AddModal({
           >
             {saving ? "Enregistrement…" : "Enregistrer"}
           </button>
+          {editing && (
+            <button
+              type="button"
+              onClick={remove}
+              disabled={saving}
+              className="text-strat-a text-sm py-2"
+            >
+              {confirmDelete ? "Confirmer la suppression" : "Supprimer"}
+            </button>
+          )}
           {error && <p className="text-strat-a text-sm">{error}</p>}
         </form>
       </div>
