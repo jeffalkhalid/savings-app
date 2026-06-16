@@ -78,7 +78,10 @@ export async function createTransactionsBulk(
       category_id: r.categoryId,
       account_id: r.accountId,
       type: r.type,
-      source: "import",
+      // "manual" : la contrainte CHECK transactions_source_check n'autorise pas
+      // "import". Provenance non utilisée par le cockpit ; rebascule sur "import"
+      // si tu ajoutes la valeur à la contrainte côté Supabase.
+      source: "manual",
     }))
   );
   if (error) throw new Error(error.message);
