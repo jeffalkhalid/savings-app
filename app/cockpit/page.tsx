@@ -38,7 +38,7 @@ export default function DashboardPage() {
   const { txns, loading, error, refetch } = useTransactions(month);
   const { categories } = useCategories();
   const { accounts } = useAccounts();
-  const { rows: monthlyByCat } = useMonthlyByCategory(user.id);
+  const { rows: monthlyByCat, error: catError } = useMonthlyByCategory(user.id);
 
   const metrics = useMemo(() => computeMetrics(txns), [txns]);
   const insights = useMemo(
@@ -99,11 +99,18 @@ export default function DashboardPage() {
           />
         </section>
       ) : (
-        <CategoryBreakdown
-          insights={insights}
-          monthLabel={label}
-          onSelect={setDrillCategory}
-        />
+        <>
+          {catError && (
+            <p className="text-ink-muted text-xs mb-2">
+              Répartition indisponible — réessaie plus tard.
+            </p>
+          )}
+          <CategoryBreakdown
+            insights={insights}
+            monthLabel={label}
+            onSelect={setDrillCategory}
+          />
+        </>
       )}
 
       <Fab onClick={() => setShowAdd(true)} label="Ajouter une transaction" />
