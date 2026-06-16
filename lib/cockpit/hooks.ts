@@ -179,3 +179,25 @@ export function usePatrimoineSummary(userId: string) {
 
   return { lines, loading, error, refetch };
 }
+
+export function useAllTransactions() {
+  const [txns, setTxns] = useState<Txn[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase
+      .from("transactions")
+      .select("id,date,amount,type")
+      .then(({ data, error }) => {
+        if (error) setError(error.message);
+        else {
+          setError(null);
+          setTxns((data as Txn[]) ?? []);
+        }
+        setLoading(false);
+      });
+  }, []);
+
+  return { txns, loading, error };
+}
