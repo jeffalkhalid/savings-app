@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   createTransaction,
   updateTransaction,
@@ -42,6 +42,19 @@ export function TxnModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
+
+  // Création : les listes chargent en async ; on seede les selects à leur arrivée
+  // si encore vides. (Le chemin édition seede toujours depuis txn.)
+  useEffect(() => {
+    if (!txn && !categoryId && categories.length) setCategoryId(categories[0].id);
+  }, [txn, categories, categoryId]);
+  useEffect(() => {
+    if (!txn && !accountId && accounts.length) {
+      setAccountId(
+        accounts.find((a) => a.name.includes("BNP"))?.id ?? accounts[0].id
+      );
+    }
+  }, [txn, accounts, accountId]);
 
   const fieldCls = "border border-rule rounded-lg px-3 py-3 bg-white text-base w-full";
   const labelCls = "grid gap-1.5 text-[13px] text-ink-muted";
