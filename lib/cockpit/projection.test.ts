@@ -41,6 +41,16 @@ describe("averageMonthlyNet", () => {
     ).toBe(1000);
   });
 
+  it("does not count a savings/transfer-only month in the average", () => {
+    expect(
+      averageMonthlyNet([
+        tx("income", 3000, "2026-01-02"),
+        tx("expense", -1000, "2026-01-10"), // Jan net 2000
+        tx("savings", -500, "2026-02-05"), // Feb: savings only, excluded
+      ])
+    ).toBe(2000);
+  });
+
   it("returns 0 for an empty list", () => {
     expect(averageMonthlyNet([])).toBe(0);
   });

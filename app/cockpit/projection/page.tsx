@@ -14,7 +14,7 @@ import { ProjectionControls } from "@/components/cockpit/projection/ProjectionCo
 
 export default function ProjectionPage() {
   const user = useAuth();
-  const { txns } = useAllTransactions();
+  const { txns, error: txnError } = useAllTransactions();
   const { lines } = usePatrimoineSummary(user.id);
 
   const avgFlow = useMemo(() => averageMonthlyNet(txns), [txns]);
@@ -58,6 +58,12 @@ export default function ProjectionPage() {
       {initial === 0 && (
         <p className="text-ink-muted text-sm mb-4">
           Ajoute des assets dans Patrimoine pour projeter sur une base réelle.
+        </p>
+      )}
+
+      {txnError && (
+        <p className="text-ink-muted text-xs mb-4">
+          Transactions indisponibles — saisis l&apos;épargne mensuelle manuellement.
         </p>
       )}
 

@@ -4,11 +4,12 @@ import type { Txn } from "./types";
 export function averageMonthlyNet(txns: Txn[]): number {
   const byMonth = new Map<string, number>();
   for (const t of txns) {
+    // Seuls income/expense bougent le patrimoine ; un mois qui n'a que des
+    // transfer/savings ne doit pas créer un mois à net 0 qui dilue la moyenne.
+    if (t.type !== "income" && t.type !== "expense") continue;
     const month = t.date.slice(0, 7);
     const amt = Math.abs(Number(t.amount));
-    let delta = 0;
-    if (t.type === "income") delta = amt;
-    else if (t.type === "expense") delta = -amt;
+    const delta = t.type === "income" ? amt : -amt;
     byMonth.set(month, (byMonth.get(month) ?? 0) + delta);
   }
   if (byMonth.size === 0) return 0;
