@@ -61,7 +61,7 @@ export default function DashboardPage() {
         onSelect={setEditTxn}
       />
 
-      <Fab onClick={() => setShowAdd(true)} />
+      <Fab onClick={() => setShowAdd(true)} label="Ajouter une transaction" />
 
       {showAdd && (
         <TxnModal
