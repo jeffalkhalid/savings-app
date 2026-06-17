@@ -33,6 +33,9 @@ describe("monthlyAmount", () => {
   it("uses the absolute value of amount", () => {
     expect(monthlyAmount(rec({ amount: -40 }))).toBe(40);
   });
+  it("coerces a string amount (PostgREST numerics arrive as strings)", () => {
+    expect(monthlyAmount(rec({ amount: "800" as unknown as number }))).toBe(800);
+  });
 });
 
 describe("monthlyFixedTotal", () => {
