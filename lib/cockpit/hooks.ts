@@ -13,6 +13,7 @@ import type { Txn, Category, Account } from "./types";
 import type { Asset, AssetValuation, PatrimoineLine } from "./patrimoine";
 import type { MonthlyCategoryRow } from "./categories-analysis";
 import type { Recurring } from "./fixed";
+import { ensureSeed } from "./seed";
 
 export type AuthUser = { id: string; email?: string };
 
@@ -248,4 +249,25 @@ export function useRecurring(userId: string) {
   }, [userId]);
 
   return { recurring, loading, error };
+}
+
+export function useEnsureSeed(userId: string) {
+  const [ready, setReady] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    ensureSeed(userId)
+      .catch((e) => {
+        if (!cancelled) setError(e instanceof Error ? e.message : "Erreur");
+      })
+      .finally(() => {
+        if (!cancelled) setReady(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+
+  return { ready, error };
 }
