@@ -25,8 +25,9 @@ export const DEFAULT_CATEGORIES: SeedCategory[] = [
   { name: "Investissements", type: "savings", color: "#2D7A4F" },
 ];
 
+// type ∈ contrainte CHECK de la table accounts : current/savings/investment/work_savings/commodity.
 export const DEFAULT_ACCOUNTS: SeedAccount[] = [
-  { name: "Compte courant", type: "checking" },
+  { name: "Compte courant", type: "current" },
   { name: "Livret épargne", type: "savings" },
 ];
 
