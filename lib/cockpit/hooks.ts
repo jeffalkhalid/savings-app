@@ -259,6 +259,7 @@ export function useEnsureSeed(userId: string) {
     let cancelled = false;
     ensureSeed(userId)
       .catch((e) => {
+        console.error("ensureSeed failed", e);
         if (!cancelled) setError(e instanceof Error ? e.message : "Erreur");
       })
       .finally(() => {
