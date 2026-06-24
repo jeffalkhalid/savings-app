@@ -13,8 +13,10 @@ import {
 import { computeMetrics } from "@/lib/cockpit/metrics";
 import { analyzeCategories } from "@/lib/cockpit/categories-analysis";
 import { monthlyFixedTotal, fixedVariableSplit } from "@/lib/cockpit/fixed";
+import { pendingTransfers } from "@/lib/cockpit/transfers";
 import { currentMonth } from "@/lib/cockpit/format";
 import { supabase } from "@/lib/cockpit/supabase";
+import { updateTransaction } from "@/lib/cockpit/transactions-api";
 import type { Txn } from "@/lib/cockpit/types";
 import { MonthSwitcher } from "@/components/cockpit/MonthSwitcher";
 import { HeroBand } from "@/components/cockpit/HeroBand";
@@ -23,6 +25,7 @@ import { TxnList } from "@/components/cockpit/TxnList";
 import { CategoryBreakdown } from "@/components/cockpit/CategoryBreakdown";
 import { FixedVariableBar } from "@/components/cockpit/FixedVariableBar";
 import { FixedChargesList } from "@/components/cockpit/FixedChargesList";
+import { TransferTriage } from "@/components/cockpit/TransferTriage";
 import { Fab } from "@/components/cockpit/Fab";
 import { TxnModal } from "@/components/cockpit/TxnModal";
 
@@ -39,6 +42,8 @@ export default function DashboardPage() {
   const [editTxn, setEditTxn] = useState<Txn | null>(null);
   const [drillCategory, setDrillCategory] = useState<string | null>(null);
   const [showFixed, setShowFixed] = useState(false);
+  const [showTransfers, setShowTransfers] = useState(false);
+  const [transferError, setTransferError] = useState<string | null>(null);
 
   const { txns, loading, error, refetch } = useTransactions(month);
   const { categories } = useCategories();
@@ -56,13 +61,41 @@ export default function DashboardPage() {
     () => fixedVariableSplit(metrics.depenses, fixedTotal),
     [metrics.depenses, fixedTotal]
   );
+  const transfers = useMemo(() => pendingTransfers(txns), [txns]);
   const label = monthLabelOf(month);
 
   const changeMonth = (m: string) => {
     setMonth(m);
     setDrillCategory(null);
     setShowFixed(false);
+    setShowTransfers(false);
   };
+  const openTransfers = () => {
+    setDrillCategory(null);
+    setShowFixed(false);
+    setTransferError(null);
+    setShowTransfers(true);
+  };
+  const reclassify = async (txn: Txn, categoryId: string) => {
+    const cat = categories.find((c) => c.id === categoryId);
+    if (!cat) return;
+    setTransferError(null);
+    try {
+      await updateTransaction(txn.id, {
+        date: txn.date,
+        absAmount: Math.abs(Number(txn.amount)),
+        description: txn.description,
+        categoryId,
+        categoryName: cat.name,
+        accountId: txn.account_id ?? "",
+        categoryType: cat.type,
+      });
+      refetch();
+    } catch (err) {
+      setTransferError(err instanceof Error ? err.message : "Erreur");
+    }
+  };
+
   const drillTxns = drillCategory
     ? txns.filter((t) => t.category_id === drillCategory)
     : [];
@@ -88,9 +121,21 @@ export default function DashboardPage() {
       </header>
 
       <HeroBand metrics={metrics} monthLabel={label} />
-      <StatStrip metrics={metrics} />
+      <StatStrip metrics={metrics} onTransfers={openTransfers} />
 
-      {showFixed ? (
+      {showTransfers ? (
+        <>
+          {transferError && (
+            <p className="text-strat-a text-sm mb-2">{transferError}</p>
+          )}
+          <TransferTriage
+            transfers={transfers}
+            categories={categories}
+            onReclassify={reclassify}
+            onBack={() => setShowTransfers(false)}
+          />
+        </>
+      ) : showFixed ? (
         <FixedChargesList
           recurring={recurring}
           categories={categories}
