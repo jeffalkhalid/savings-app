@@ -38,6 +38,7 @@ export async function ensureSeed(userId: string): Promise<boolean> {
         user_id: userId,
         name: a.name,
         type: a.type,
+        institution: "(à préciser)",
         currency: "EUR",
       }))
     );
