@@ -34,14 +34,26 @@ describe("computeMetrics", () => {
     expect(m.tauxEpargne).toBe(0);
   });
 
-  it("resteAVivre = revenus - depenses (ignores savings and transfers)", () => {
+  it("resteAVivre = net signé : revenus moins tout ce qui sort", () => {
     const m = computeMetrics([
       t("income", 2980),
       t("expense", -1020),
       t("savings", -1020),
       t("transfer", -320),
     ]);
-    expect(m.resteAVivre).toBe(1960);
+    // 2980 - 1020 - 1020 - 320 = ce qui reste sur le compte.
+    expect(m.resteAVivre).toBe(620);
+  });
+
+  it("resteAVivre compte les virements reçus en positif (net signé)", () => {
+    const m = computeMetrics([
+      t("income", 1000),
+      t("transfer", 200), // virement reçu : argent qui ENTRE
+      t("expense", -300),
+      t("savings", -100),
+    ]);
+    // 1000 + 200 - 300 - 100 = 800 (et non 400 si on soustrayait |transferts|).
+    expect(m.resteAVivre).toBe(800);
   });
 
   it("returns zeros for an empty list", () => {

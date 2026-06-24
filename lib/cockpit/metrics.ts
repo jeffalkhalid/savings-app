@@ -19,12 +19,15 @@ export function computeMetrics(txns: Txn[]): Metrics {
   const depenses = sumAbs(txns, "expense");
   const epargne = sumAbs(txns, "savings");
   const transferts = sumAbs(txns, "transfer");
+  // Ce qui reste vraiment sur le compte : net signé de TOUS les flux
+  // (revenus + virements reçus − dépenses − épargne − virements émis).
+  const resteAVivre = txns.reduce((acc, x) => acc + Number(x.amount), 0);
   return {
     revenus,
     depenses,
     epargne,
     transferts,
     tauxEpargne: revenus > 0 ? epargne / revenus : 0,
-    resteAVivre: revenus - depenses,
+    resteAVivre,
   };
 }
