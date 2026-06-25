@@ -14,6 +14,10 @@ import { computeMetrics } from "@/lib/cockpit/metrics";
 import { analyzeCategories } from "@/lib/cockpit/categories-analysis";
 import { monthlyFixedTotal, fixedVariableSplit } from "@/lib/cockpit/fixed";
 import { pendingTransfers } from "@/lib/cockpit/transfers";
+import {
+  ensureTransferCategories,
+  classifyAllTransfers,
+} from "@/lib/cockpit/transfers-api";
 import { currentMonth } from "@/lib/cockpit/format";
 import { supabase } from "@/lib/cockpit/supabase";
 import { updateTransaction } from "@/lib/cockpit/transactions-api";
@@ -26,6 +30,7 @@ import { CategoryBreakdown } from "@/components/cockpit/CategoryBreakdown";
 import { FixedVariableBar } from "@/components/cockpit/FixedVariableBar";
 import { FixedChargesList } from "@/components/cockpit/FixedChargesList";
 import { TransferTriage } from "@/components/cockpit/TransferTriage";
+import { TransferNudge } from "@/components/cockpit/TransferNudge";
 import { Fab } from "@/components/cockpit/Fab";
 import { TxnModal } from "@/components/cockpit/TxnModal";
 
@@ -44,6 +49,7 @@ export default function DashboardPage() {
   const [showFixed, setShowFixed] = useState(false);
   const [showTransfers, setShowTransfers] = useState(false);
   const [transferError, setTransferError] = useState<string | null>(null);
+  const [classifying, setClassifying] = useState(false);
 
   const { txns, loading, error, refetch } = useTransactions(month);
   const { categories } = useCategories();
@@ -70,12 +76,6 @@ export default function DashboardPage() {
     setShowFixed(false);
     setShowTransfers(false);
   };
-  const openTransfers = () => {
-    setDrillCategory(null);
-    setShowFixed(false);
-    setTransferError(null);
-    setShowTransfers(true);
-  };
   const reclassify = async (txn: Txn, categoryId: string) => {
     const cat = categories.find((c) => c.id === categoryId);
     if (!cat) return;
@@ -94,6 +94,18 @@ export default function DashboardPage() {
     } catch (err) {
       setTransferError(err instanceof Error ? err.message : "Erreur");
     }
+  };
+  const autoClassify = async () => {
+    setClassifying(true);
+    setTransferError(null);
+    try {
+      const cats = await ensureTransferCategories(user.id, categories);
+      await classifyAllTransfers(txns, cats);
+      refetch();
+    } catch (err) {
+      setTransferError(err instanceof Error ? err.message : "Erreur");
+    }
+    setClassifying(false);
   };
 
   const drillTxns = drillCategory
@@ -121,7 +133,7 @@ export default function DashboardPage() {
       </header>
 
       <HeroBand metrics={metrics} monthLabel={label} />
-      <StatStrip metrics={metrics} onTransfers={openTransfers} />
+      <StatStrip metrics={metrics} />
 
       {showTransfers ? (
         <>
@@ -163,6 +175,18 @@ export default function DashboardPage() {
         </section>
       ) : (
         <>
+          {transferError && (
+            <p className="text-strat-a text-sm mb-2">{transferError}</p>
+          )}
+          <TransferNudge
+            count={transfers.length}
+            onAuto={autoClassify}
+            onManual={() => {
+              setTransferError(null);
+              setShowTransfers(true);
+            }}
+            busy={classifying}
+          />
           {fixedTotal > 0 && (
             <FixedVariableBar
               fixe={split.fixe}
