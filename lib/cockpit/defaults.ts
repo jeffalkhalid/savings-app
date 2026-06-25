@@ -21,6 +21,8 @@ export const DEFAULT_CATEGORIES: SeedCategory[] = [
   { name: "Vêtements", type: "expense", color: "#B89968" },
   { name: "Frais bancaires", type: "expense", color: "#6B6E76" },
   { name: "Virements", type: "transfer", color: "#0288D1" },
+  { name: "Virements reçus", type: "income", color: "#4A6FA5" },
+  { name: "Virements émis", type: "expense", color: "#6B6E76" },
   { name: "Épargne", type: "savings", color: "#1B5E40" },
   { name: "Investissements", type: "savings", color: "#2D7A4F" },
 ];
