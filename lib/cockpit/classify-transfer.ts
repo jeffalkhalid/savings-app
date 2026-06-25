@@ -19,18 +19,22 @@ function normalize(s: string): string {
     .replace(/[̀-ͯ]/g, "");
 }
 
+// Match sur frontière de mot (\b) pour éviter les faux positifs de sous-chaîne
+// (ex. "REMBOURSEMENT" ne doit pas matcher "bourse", "PEAGE" ne matche pas "pea").
+function matchesAny(normalized: string, keywords: string[]): boolean {
+  const re = new RegExp(`\\b(${keywords.map((k) => normalize(k)).join("|")})\\b`);
+  return re.test(normalized);
+}
+
 export function classifyTransfer(amount: number, label: string): TransferClass {
   if (Number(amount) >= 0) return "income";
-  const n = normalize(label);
-  const isSavings = SAVINGS_KEYWORDS.some((k) => n.includes(normalize(k)));
-  return isSavings ? "savings" : "expense";
+  return matchesAny(normalize(label), SAVINGS_KEYWORDS) ? "savings" : "expense";
 }
 
 export function targetCategoryName(cls: TransferClass, label: string): string {
   if (cls === "income") return "Virements reçus";
   if (cls === "expense") return "Virements émis";
-  const n = normalize(label);
-  return INVEST_KEYWORDS.some((k) => n.includes(k))
+  return matchesAny(normalize(label), INVEST_KEYWORDS)
     ? "Bourse / Natixis"
     : "Épargne";
 }

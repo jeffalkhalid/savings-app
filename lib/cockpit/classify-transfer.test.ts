@@ -20,6 +20,10 @@ describe("classifyTransfer", () => {
     expect(classifyTransfer(-100, "virement ÉPARGNE")).toBe("savings");
     expect(classifyTransfer(-100, "VERS EPARGNE")).toBe("savings");
   });
+  it("does not match a keyword inside another word (word boundary)", () => {
+    expect(classifyTransfer(-50, "REMBOURSEMENT VERS DUPONT")).toBe("expense");
+    expect(classifyTransfer(-30, "PEAGE AUTOROUTE A6")).toBe("expense");
+  });
 });
 
 describe("targetCategoryName", () => {

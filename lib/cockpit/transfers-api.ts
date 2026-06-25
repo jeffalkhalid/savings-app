@@ -4,9 +4,13 @@ import { classifyTransfer, targetCategoryName } from "./classify-transfer";
 import { pendingTransfers } from "./transfers";
 import type { Txn, Category } from "./types";
 
+// Toutes les cibles possibles de targetCategoryName : on les garantit ici pour
+// qu'aucune classification ne soit ignorée (dashboard) ni ne bloque l'import.
 const TRANSFER_CATEGORIES: { name: string; type: string }[] = [
   { name: "Virements reçus", type: "income" },
   { name: "Virements émis", type: "expense" },
+  { name: "Bourse / Natixis", type: "savings" },
+  { name: "Épargne", type: "savings" },
 ];
 
 // Crée les catégories Virements reçus/émis si absentes ; renvoie la liste à jour.
