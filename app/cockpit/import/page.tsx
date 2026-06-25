@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import * as XLSX from "xlsx";
 import { useAuth, useCategories, useAccounts } from "@/lib/cockpit/hooks";
@@ -15,6 +15,12 @@ import {
   createTransactionsBulk,
   type ImportRow,
 } from "@/lib/cockpit/transactions-api";
+import {
+  classifyTransfer,
+  targetCategoryName,
+} from "@/lib/cockpit/classify-transfer";
+import { ensureTransferCategories } from "@/lib/cockpit/transfers-api";
+import type { Category } from "@/lib/cockpit/types";
 import { ImportDropzone } from "@/components/cockpit/import/ImportDropzone";
 import { ReviewTable } from "@/components/cockpit/import/ReviewTable";
 
@@ -23,7 +29,15 @@ type Row = ReviewRowData & { include: boolean };
 export default function ImportPage() {
   const user = useAuth();
   const router = useRouter();
-  const { categories } = useCategories();
+  const { categories: liveCategories } = useCategories();
+  const [categories, setCategories] = useState<Category[]>([]);
+
+  useEffect(() => {
+    if (!liveCategories.length) return;
+    ensureTransferCategories(user.id, liveCategories)
+      .then(setCategories)
+      .catch(() => setCategories(liveCategories));
+  }, [liveCategories, user.id]);
   const { accounts } = useAccounts();
   const [rows, setRows] = useState<Row[] | null>(null);
   const [accountId, setAccountId] = useState("");
@@ -60,7 +74,17 @@ export default function ImportPage() {
           )
         )
       );
-      const reviewed = markDuplicates(parsed, existing);
+      const reviewed = markDuplicates(parsed, existing).map((r) =>
+        r.categoryName === "Virements"
+          ? {
+              ...r,
+              categoryName: targetCategoryName(
+                classifyTransfer(r.amount, r.label),
+                r.label
+              ),
+            }
+          : r
+      );
       setRows(reviewed.map((r) => ({ ...r, include: !r.duplicate })));
       setAccountId(
         accounts.find((a) => a.name.includes("BNP"))?.id ?? accounts[0]?.id ?? ""
