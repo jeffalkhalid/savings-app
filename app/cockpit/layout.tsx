@@ -8,6 +8,7 @@ import {
 } from "@/lib/cockpit/hooks";
 import { LoginForm } from "@/components/cockpit/LoginForm";
 import { TabBar } from "@/components/cockpit/TabBar";
+import { ThemeProvider } from "@/components/cockpit/ThemeProvider";
 
 function Loading({ text }: { text: string }) {
   return (
@@ -27,10 +28,12 @@ function SeededShell({
   const { ready } = useEnsureSeed(user.id);
   if (!ready) return <Loading text="Préparation de votre espace…" />;
   return (
-    <AuthContext.Provider value={user}>
-      <div className="min-h-screen pb-24">{children}</div>
-      <TabBar />
-    </AuthContext.Provider>
+    <ThemeProvider>
+      <AuthContext.Provider value={user}>
+        <div className="min-h-screen pb-24">{children}</div>
+        <TabBar />
+      </AuthContext.Provider>
+    </ThemeProvider>
   );
 }
 
