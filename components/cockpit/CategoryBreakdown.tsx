@@ -1,20 +1,17 @@
 import type { CategoryInsight } from "@/lib/cockpit/categories-analysis";
+import { categoryIcon } from "@/lib/cockpit/category-icon";
 import { CategoryRow } from "./CategoryRow";
 
 export function CategoryBreakdown({
   insights,
-  monthLabel,
   onSelect,
 }: {
   insights: CategoryInsight[];
-  monthLabel: string;
   onSelect: (categoryId: string) => void;
 }) {
   return (
     <section>
-      <div className="text-xs uppercase tracking-[0.1em] text-ink-muted mb-2">
-        Dépenses par poste · {monthLabel}
-      </div>
+      <div className="font-display text-[15px] mb-1">Par catégorie</div>
       {!insights.length && (
         <p className="text-ink-muted text-sm py-4">Aucune dépense ce mois.</p>
       )}
@@ -22,6 +19,7 @@ export function CategoryBreakdown({
         <CategoryRow
           key={i.categoryId}
           insight={i}
+          icon={categoryIcon(i.name)}
           onClick={() => onSelect(i.categoryId)}
         />
       ))}
