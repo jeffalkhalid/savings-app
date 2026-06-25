@@ -1,6 +1,7 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
+  darkMode: "class",
   content: [
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
@@ -8,12 +9,18 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        paper: "#FAF8F4",
-        ink: "#1A1B1F",
-        "ink-muted": "#6B6E76",
-        rule: "#E5E2DC",
-        emerald: "#1B5E40",
-        "strat-a": "#B45342",
+        paper: "var(--phone)",
+        card: "var(--card)",
+        tile: "var(--tile)",
+        seg: "var(--seg)",
+        rule: "var(--line)",
+        ink: "var(--ink)",
+        ink2: "var(--ink2)",
+        "ink-muted": "var(--muted)",
+        emerald: "#3E7D5A",
+        accent: "#C75B39",
+        gold: "#E3B23C",
+        "strat-a": "#C75B39",
         "strat-b": "#4A6FA5",
         "strat-c": "#836FB2",
         "strat-d": "#4F8B82",
@@ -22,7 +29,7 @@ const config: Config = {
       },
       fontFamily: {
         serif: ["Fraunces", "Georgia", "serif"],
-        sans: ["Geist", "system-ui", "sans-serif"],
+        sans: ["DM Sans", "system-ui", "sans-serif"],
         mono: ["Geist Mono", "ui-monospace", "monospace"],
       },
       fontVariantNumeric: {

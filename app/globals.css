@@ -1,28 +1,41 @@
-@import url("https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=Geist+Mono:wght@400;500&display=swap");
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --color-paper: #faf8f4;
-  --color-ink: #1a1b1f;
-  --color-ink-muted: #6b6e76;
-  --color-rule: #e5e2dc;
-  --color-emerald: #1b5e40;
+  --bg: #e7ddcd;
+  --phone: #f3ede3;
+  --card: #fbf7f0;
+  --tile: #efe3cf;
+  --seg: #ebe2d2;
+  --line: #e6ddcd;
+  --muted: #9a8e7c;
+  --ink2: #6b6155;
+  --ink: #2a241c;
+}
+
+.dark {
+  --bg: #14110d;
+  --phone: #1c1915;
+  --card: #262019;
+  --tile: #2f2820;
+  --seg: #2c261e;
+  --line: #372f25;
+  --muted: #a89b86;
+  --ink2: #c7baa4;
+  --ink: #f1eadf;
 }
 
 html,
 body {
-  background: var(--color-paper);
-  color: var(--color-ink);
-  font-family:
-    "Geist",
-    system-ui,
-    -apple-system,
-    sans-serif;
+  background: var(--phone);
+  color: var(--ink);
+  font-family: "DM Sans", system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.3s ease;
 }
 
 .font-display {
@@ -47,14 +60,14 @@ input[type="range"] {
 
 input[type="range"]::-webkit-slider-runnable-track {
   height: 2px;
-  background: var(--color-rule);
+  background: var(--line);
 }
 
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
   margin-top: -7px;
-  background: var(--color-ink);
+  background: var(--ink);
   height: 16px;
   width: 16px;
   border-radius: 50%;
@@ -67,11 +80,11 @@ input[type="range"]::-webkit-slider-thumb:hover {
 
 input[type="range"]::-moz-range-track {
   height: 2px;
-  background: var(--color-rule);
+  background: var(--line);
 }
 
 input[type="range"]::-moz-range-thumb {
-  background: var(--color-ink);
+  background: var(--ink);
   height: 16px;
   width: 16px;
   border: none;
