@@ -18,41 +18,50 @@ import {
   ensureTransferCategories,
   classifyAllTransfers,
 } from "@/lib/cockpit/transfers-api";
+import { savingsMood } from "@/lib/cockpit/mood";
+import { buildNotes } from "@/lib/cockpit/cockpit-notes";
+import { categoryIcon } from "@/lib/cockpit/category-icon";
 import { currentMonth } from "@/lib/cockpit/format";
 import { supabase } from "@/lib/cockpit/supabase";
 import { updateTransaction } from "@/lib/cockpit/transactions-api";
 import type { Txn } from "@/lib/cockpit/types";
 import { MonthSwitcher } from "@/components/cockpit/MonthSwitcher";
-import { HeroBand } from "@/components/cockpit/HeroBand";
+import { HeroCard } from "@/components/cockpit/HeroCard";
 import { StatStrip } from "@/components/cockpit/StatStrip";
-import { TxnList } from "@/components/cockpit/TxnList";
+import { InsightsRow } from "@/components/cockpit/InsightsRow";
 import { CategoryBreakdown } from "@/components/cockpit/CategoryBreakdown";
 import { FixedVariableBar } from "@/components/cockpit/FixedVariableBar";
 import { FixedChargesList } from "@/components/cockpit/FixedChargesList";
 import { TransferTriage } from "@/components/cockpit/TransferTriage";
 import { TransferNudge } from "@/components/cockpit/TransferNudge";
+import { OpsDrill } from "@/components/cockpit/OpsDrill";
+import { ThemeToggle } from "@/components/cockpit/ThemeToggle";
 import { Fab } from "@/components/cockpit/Fab";
 import { TxnModal } from "@/components/cockpit/TxnModal";
-import { ThemeToggle } from "@/components/cockpit/ThemeToggle";
 
+const GOAL = 0.2;
 const monthLabelOf = (m: string) =>
   new Date(`${m}-01T00:00:00`).toLocaleDateString("fr-FR", {
     month: "long",
     year: "numeric",
   });
 
+type Drill = null | { kind: "category"; id: string } | { kind: "all" };
+
 export default function DashboardPage() {
   const user = useAuth();
   const [month, setMonth] = useState(currentMonth());
   const [showAdd, setShowAdd] = useState(false);
   const [editTxn, setEditTxn] = useState<Txn | null>(null);
-  const [drillCategory, setDrillCategory] = useState<string | null>(null);
+  const [drill, setDrill] = useState<Drill>(null);
+  const [query, setQuery] = useState("");
+  const [chip, setChip] = useState<string | null>(null);
   const [showFixed, setShowFixed] = useState(false);
   const [showTransfers, setShowTransfers] = useState(false);
   const [transferError, setTransferError] = useState<string | null>(null);
   const [classifying, setClassifying] = useState(false);
 
-  const { txns, loading, error, refetch } = useTransactions(month);
+  const { txns, refetch } = useTransactions(month);
   const { categories } = useCategories();
   const { accounts } = useAccounts();
   const { rows: monthlyByCat, error: catError } = useMonthlyByCategory(user.id);
@@ -69,14 +78,44 @@ export default function DashboardPage() {
     [metrics.depenses, fixedTotal]
   );
   const transfers = useMemo(() => pendingTransfers(txns), [txns]);
+  const mood = useMemo(
+    () => savingsMood(metrics.tauxEpargne, GOAL),
+    [metrics.tauxEpargne]
+  );
+  const notes = useMemo(() => buildNotes(insights, mood), [insights, mood]);
   const label = monthLabelOf(month);
+
+  const expenseTxns = useMemo(
+    () => txns.filter((t) => t.type === "expense"),
+    [txns]
+  );
+  const drillCat =
+    drill?.kind === "category"
+      ? categories.find((c) => c.id === drill.id)
+      : null;
+  const drillTxns =
+    drill?.kind === "category"
+      ? txns.filter((t) => t.category_id === drill.id)
+      : expenseTxns;
 
   const changeMonth = (m: string) => {
     setMonth(m);
-    setDrillCategory(null);
+    setDrill(null);
+    setQuery("");
+    setChip(null);
     setShowFixed(false);
     setShowTransfers(false);
   };
+  const openCategory = (id: string) => {
+    setDrill({ kind: "category", id });
+    setQuery("");
+  };
+  const openAllOps = () => {
+    setDrill({ kind: "all" });
+    setQuery("");
+    setChip(null);
+  };
+
   const reclassify = async (txn: Txn, categoryId: string) => {
     const cat = categories.find((c) => c.id === categoryId);
     if (!cat) return;
@@ -109,12 +148,6 @@ export default function DashboardPage() {
     setClassifying(false);
   };
 
-  const drillTxns = drillCategory
-    ? txns.filter((t) => t.category_id === drillCategory)
-    : [];
-  const drillName =
-    categories.find((c) => c.id === drillCategory)?.name ?? "";
-
   return (
     <main className="max-w-[600px] mx-auto px-5 pt-8">
       <header className="flex justify-between items-center mb-6">
@@ -134,13 +167,19 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <HeroBand metrics={metrics} monthLabel={label} />
-      <StatStrip metrics={metrics} />
+      <HeroCard
+        taux={metrics.tauxEpargne}
+        reste={metrics.resteAVivre}
+        monthLabel={label}
+        mood={mood}
+        goal={GOAL}
+      />
+      <StatStrip metrics={metrics} onAllOps={openAllOps} />
 
       {showTransfers ? (
         <>
           {transferError && (
-            <p className="text-strat-a text-sm mb-2">{transferError}</p>
+            <p className="text-accent text-sm mb-2">{transferError}</p>
           )}
           <TransferTriage
             transfers={transfers}
@@ -155,30 +194,24 @@ export default function DashboardPage() {
           categories={categories}
           onBack={() => setShowFixed(false)}
         />
-      ) : drillCategory ? (
-        <section>
-          <button
-            onClick={() => setDrillCategory(null)}
-            className="text-ink-muted text-sm mb-2"
-          >
-            ‹ Retour
-          </button>
-          <div className="text-xs uppercase tracking-[0.1em] text-ink-muted mb-2">
-            {drillName}
-          </div>
-          <TxnList
-            txns={drillTxns}
-            categories={categories}
-            loading={loading}
-            error={error}
-            monthLabel={label}
-            onSelect={setEditTxn}
-          />
-        </section>
+      ) : drill ? (
+        <OpsDrill
+          mode={drill.kind === "all" ? "all" : "category"}
+          title={drill.kind === "all" ? "Toutes les dépenses" : drillCat?.name ?? ""}
+          icon={drill.kind === "all" ? "💸" : categoryIcon(drillCat?.name ?? "")}
+          txns={drillTxns}
+          categories={categories}
+          query={query}
+          onQuery={setQuery}
+          chip={chip}
+          onChip={setChip}
+          onSelectTxn={setEditTxn}
+          onBack={() => setDrill(null)}
+        />
       ) : (
         <>
           {transferError && (
-            <p className="text-strat-a text-sm mb-2">{transferError}</p>
+            <p className="text-accent text-sm mb-2">{transferError}</p>
           )}
           <TransferNudge
             count={transfers.length}
@@ -189,6 +222,7 @@ export default function DashboardPage() {
             }}
             busy={classifying}
           />
+          <InsightsRow notes={notes} />
           {fixedTotal > 0 && (
             <FixedVariableBar
               fixe={split.fixe}
@@ -202,11 +236,7 @@ export default function DashboardPage() {
               Répartition indisponible — réessaie plus tard.
             </p>
           )}
-          <CategoryBreakdown
-            insights={insights}
-            monthLabel={label}
-            onSelect={setDrillCategory}
-          />
+          <CategoryBreakdown insights={insights} onSelect={openCategory} />
         </>
       )}
 
