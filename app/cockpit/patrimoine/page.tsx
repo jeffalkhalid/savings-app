@@ -59,7 +59,7 @@ export default function PatrimoinePage() {
         <h1 className="font-display text-2xl">Patrimoine</h1>
       </header>
 
-      <PatrimoineHero total={total} delta={delta} />
+      <PatrimoineHero total={total} delta={delta} count={assets.length} />
       <PatrimoineChart series={series} />
       <TypeBreakdown lines={lines} />
       <AssetList
@@ -68,6 +68,7 @@ export default function PatrimoinePage() {
         loading={aLoading}
         error={aError}
         onSelect={setSelected}
+        onAdd={() => setShowCreate(true)}
       />
 
       <Fab onClick={() => setShowCreate(true)} label="Ajouter un asset" />
