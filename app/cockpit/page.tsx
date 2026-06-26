@@ -21,11 +21,11 @@ import {
 import { savingsMood } from "@/lib/cockpit/mood";
 import { buildNotes } from "@/lib/cockpit/cockpit-notes";
 import { categoryIcon } from "@/lib/cockpit/category-icon";
-import { Wallet } from "lucide-react";
+import { Wallet, TrendingUp, PiggyBank, ArrowLeftRight, type LucideIcon } from "lucide-react";
 import { currentMonth } from "@/lib/cockpit/format";
 import { supabase } from "@/lib/cockpit/supabase";
 import { updateTransaction } from "@/lib/cockpit/transactions-api";
-import type { Txn } from "@/lib/cockpit/types";
+import type { Txn, TxnType } from "@/lib/cockpit/types";
 import { MonthSwitcher } from "@/components/cockpit/MonthSwitcher";
 import { HeroCard } from "@/components/cockpit/HeroCard";
 import { StatStrip } from "@/components/cockpit/StatStrip";
@@ -47,7 +47,17 @@ const monthLabelOf = (m: string) =>
     year: "numeric",
   });
 
-type Drill = null | { kind: "category"; id: string } | { kind: "all" };
+const ALL_META: Record<TxnType, { title: string; Icon: LucideIcon }> = {
+  income: { title: "Revenus", Icon: TrendingUp },
+  expense: { title: "Dépenses", Icon: Wallet },
+  savings: { title: "Épargne", Icon: PiggyBank },
+  transfer: { title: "Virements", Icon: ArrowLeftRight },
+};
+
+type Drill =
+  | null
+  | { kind: "category"; id: string }
+  | { kind: "all"; type: TxnType };
 
 export default function DashboardPage() {
   const user = useAuth();
@@ -86,10 +96,6 @@ export default function DashboardPage() {
   const notes = useMemo(() => buildNotes(insights, mood), [insights, mood]);
   const label = monthLabelOf(month);
 
-  const expenseTxns = useMemo(
-    () => txns.filter((t) => t.type === "expense"),
-    [txns]
-  );
   const drillCat =
     drill?.kind === "category"
       ? categories.find((c) => c.id === drill.id)
@@ -97,7 +103,9 @@ export default function DashboardPage() {
   const drillTxns =
     drill?.kind === "category"
       ? txns.filter((t) => t.category_id === drill.id)
-      : expenseTxns;
+      : drill?.kind === "all"
+        ? txns.filter((t) => t.type === drill.type)
+        : [];
 
   const changeMonth = (m: string) => {
     setMonth(m);
@@ -111,8 +119,8 @@ export default function DashboardPage() {
     setDrill({ kind: "category", id });
     setQuery("");
   };
-  const openAllOps = () => {
-    setDrill({ kind: "all" });
+  const openAllOps = (type: TxnType) => {
+    setDrill({ kind: "all", type });
     setQuery("");
     setChip(null);
   };
@@ -175,7 +183,7 @@ export default function DashboardPage() {
         mood={mood}
         goal={GOAL}
       />
-      <StatStrip metrics={metrics} onAllOps={openAllOps} />
+      <StatStrip metrics={metrics} onDrill={openAllOps} />
 
       {showTransfers ? (
         <>
@@ -198,8 +206,8 @@ export default function DashboardPage() {
       ) : drill ? (
         <OpsDrill
           mode={drill.kind === "all" ? "all" : "category"}
-          title={drill.kind === "all" ? "Toutes les dépenses" : drillCat?.name ?? ""}
-          Icon={drill.kind === "all" ? Wallet : categoryIcon(drillCat?.name ?? "")}
+          title={drill.kind === "all" ? ALL_META[drill.type].title : drillCat?.name ?? ""}
+          Icon={drill.kind === "all" ? ALL_META[drill.type].Icon : categoryIcon(drillCat?.name ?? "")}
           txns={drillTxns}
           categories={categories}
           query={query}
