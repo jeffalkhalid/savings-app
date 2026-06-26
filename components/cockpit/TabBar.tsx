@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutGrid, Landmark, TrendingUp, Target } from "lucide-react";
+import { LayoutGrid, Landmark, TrendingUp, Target, Sprout } from "lucide-react";
 
 const ITEMS = [
   { href: "/cockpit", label: "Cockpit", Icon: LayoutGrid },
   { href: "/cockpit/patrimoine", label: "Patrimoine", Icon: Landmark },
   { href: "/cockpit/projection", label: "Projection", Icon: TrendingUp },
+  { href: "/cockpit/epargne", label: "Épargne", Icon: Sprout },
   { href: "/cockpit/objectifs", label: "Objectifs", Icon: Target },
 ];
 
