@@ -8,11 +8,13 @@ import {
 } from "@/lib/cockpit/transactions-api";
 import { todayISO } from "@/lib/cockpit/format";
 import type { Category, Account, Txn } from "@/lib/cockpit/types";
+import type { Goal } from "@/lib/cockpit/goals";
 
 export function TxnModal({
   userId,
   categories,
   accounts,
+  goals,
   txn,
   onClose,
   onSaved,
@@ -20,6 +22,7 @@ export function TxnModal({
   userId: string;
   categories: Category[];
   accounts: Account[];
+  goals: Goal[];
   txn: Txn | null;
   onClose: () => void;
   onSaved: () => void;
@@ -39,6 +42,7 @@ export function TxnModal({
       accounts[0]?.id ??
       ""
   );
+  const [goalId, setGoalId] = useState(txn?.goal_id ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -58,6 +62,9 @@ export function TxnModal({
 
   const fieldCls = "border border-rule rounded-lg px-3 py-3 bg-white text-base w-full";
   const labelCls = "grid gap-1.5 text-[13px] text-ink-muted";
+
+  const isSavings =
+    categories.find((c) => c.id === categoryId)?.type === "savings";
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,6 +87,7 @@ export function TxnModal({
       categoryName: cat.name,
       accountId,
       categoryType: cat.type,
+      goalId: cat.type === "savings" ? goalId || null : null,
     };
     setSaving(true);
     try {
@@ -165,6 +173,23 @@ export function TxnModal({
               ))}
             </select>
           </label>
+          {isSavings && (
+            <label className={labelCls}>
+              Objectif (optionnel)
+              <select
+                className={fieldCls}
+                value={goalId}
+                onChange={(e) => setGoalId(e.target.value)}
+              >
+                <option value="">Aucun (épargne libre)</option>
+                {goals.map((gl) => (
+                  <option key={gl.id} value={gl.id}>
+                    {gl.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <label className={labelCls}>
             Compte
             <select

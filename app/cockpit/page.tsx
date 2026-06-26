@@ -11,6 +11,7 @@ import {
   useRecurring,
   useUserSettings,
   useReminders,
+  useGoals,
 } from "@/lib/cockpit/hooks";
 import { computeMetrics } from "@/lib/cockpit/metrics";
 import { analyzeCategories } from "@/lib/cockpit/categories-analysis";
@@ -89,6 +90,7 @@ export default function DashboardPage() {
   const { recurring } = useRecurring(user.id);
   const { settings, refetch: refetchSettings } = useUserSettings(user.id);
   const { reminders, refetch: refetchReminders } = useReminders();
+  const { goals } = useGoals();
 
   const metrics = useMemo(() => computeMetrics(txns), [txns]);
   const insights = useMemo(
@@ -290,6 +292,7 @@ export default function DashboardPage() {
           userId={user.id}
           categories={categories}
           accounts={accounts}
+          goals={goals}
           txn={null}
           onClose={() => setShowAdd(false)}
           onSaved={() => {
@@ -304,6 +307,7 @@ export default function DashboardPage() {
           userId={user.id}
           categories={categories}
           accounts={accounts}
+          goals={goals}
           txn={editTxn}
           onClose={() => setEditTxn(null)}
           onSaved={() => {
