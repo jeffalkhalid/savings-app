@@ -10,5 +10,11 @@ export type Txn = {
   account_id?: string | null;
 };
 
-export type Category = { id: string; name: string; type: string; color: string };
+export type Category = {
+  id: string;
+  name: string;
+  type: string;
+  color: string;
+  monthly_budget?: number | null;
+};
 export type Account = { id: string; name: string };

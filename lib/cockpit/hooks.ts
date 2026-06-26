@@ -81,14 +81,17 @@ export function useTransactions(month: string) {
 
 export function useCategories() {
   const [categories, setCategories] = useState<Category[]>([]);
-  useEffect(() => {
+  const refetch = useCallback(() => {
     supabase
       .from("categories")
-      .select("id,name,type,color")
+      .select("id,name,type,color,monthly_budget")
       .order("name")
       .then(({ data }) => setCategories((data as Category[]) ?? []));
   }, []);
-  return { categories };
+  useEffect(() => {
+    refetch();
+  }, [refetch]);
+  return { categories, refetch };
 }
 
 export function useAccounts() {
