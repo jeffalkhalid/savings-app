@@ -9,6 +9,7 @@ import {
   useAccounts,
   useMonthlyByCategory,
   useRecurring,
+  useUserSettings,
 } from "@/lib/cockpit/hooks";
 import { computeMetrics } from "@/lib/cockpit/metrics";
 import { analyzeCategories } from "@/lib/cockpit/categories-analysis";
@@ -21,9 +22,8 @@ import {
 import { savingsMood } from "@/lib/cockpit/mood";
 import { buildNotes } from "@/lib/cockpit/cockpit-notes";
 import { categoryIcon } from "@/lib/cockpit/category-icon";
-import { Wallet, TrendingUp, PiggyBank, ArrowLeftRight, type LucideIcon } from "lucide-react";
+import { Wallet, TrendingUp, PiggyBank, ArrowLeftRight, Settings, type LucideIcon } from "lucide-react";
 import { currentMonth } from "@/lib/cockpit/format";
-import { supabase } from "@/lib/cockpit/supabase";
 import { updateTransaction } from "@/lib/cockpit/transactions-api";
 import type { Txn, TxnType } from "@/lib/cockpit/types";
 import { MonthSwitcher } from "@/components/cockpit/MonthSwitcher";
@@ -38,8 +38,9 @@ import { TransferNudge } from "@/components/cockpit/TransferNudge";
 import { OpsDrill } from "@/components/cockpit/OpsDrill";
 import { Fab } from "@/components/cockpit/Fab";
 import { TxnModal } from "@/components/cockpit/TxnModal";
+import { ReglagesModal } from "@/components/cockpit/ReglagesModal";
 
-const GOAL = 0.2;
+
 const monthLabelOf = (m: string) =>
   new Date(`${m}-01T00:00:00`).toLocaleDateString("fr-FR", {
     month: "long",
@@ -68,6 +69,7 @@ export default function DashboardPage() {
   const [chip, setChip] = useState<string | null>(null);
   const [showFixed, setShowFixed] = useState(false);
   const [showTransfers, setShowTransfers] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [transferError, setTransferError] = useState<string | null>(null);
   const [classifying, setClassifying] = useState(false);
 
@@ -76,6 +78,7 @@ export default function DashboardPage() {
   const { accounts } = useAccounts();
   const { rows: monthlyByCat, error: catError } = useMonthlyByCategory(user.id);
   const { recurring } = useRecurring(user.id);
+  const { settings, refetch: refetchSettings } = useUserSettings(user.id);
 
   const metrics = useMemo(() => computeMetrics(txns), [txns]);
   const insights = useMemo(
@@ -88,9 +91,10 @@ export default function DashboardPage() {
     [metrics.depenses, fixedTotal]
   );
   const transfers = useMemo(() => pendingTransfers(txns), [txns]);
+  const goal = settings.savings_rate_goal;
   const mood = useMemo(
-    () => savingsMood(metrics.tauxEpargne, GOAL),
-    [metrics.tauxEpargne]
+    () => savingsMood(metrics.tauxEpargne, goal),
+    [metrics.tauxEpargne, goal]
   );
   const notes = useMemo(() => buildNotes(insights, mood), [insights, mood]);
   const label = monthLabelOf(month);
@@ -166,10 +170,12 @@ export default function DashboardPage() {
             Import
           </Link>
           <button
-            onClick={() => supabase.auth.signOut()}
-            className="text-ink-muted text-sm"
+            onClick={() => setShowSettings(true)}
+            aria-label="Réglages"
+            className="text-ink-muted"
+            type="button"
           >
-            Déco
+            <Settings size={18} />
           </button>
         </div>
       </header>
@@ -179,7 +185,7 @@ export default function DashboardPage() {
         reste={metrics.resteAVivre}
         monthLabel={label}
         mood={mood}
-        goal={GOAL}
+        goal={goal}
       />
       <StatStrip metrics={metrics} onDrill={openAllOps} />
 
@@ -273,6 +279,18 @@ export default function DashboardPage() {
           onSaved={() => {
             refetch();
             setEditTxn(null);
+          }}
+        />
+      )}
+
+      {showSettings && (
+        <ReglagesModal
+          userId={user.id}
+          settings={settings}
+          onClose={() => setShowSettings(false)}
+          onSaved={() => {
+            refetchSettings();
+            setShowSettings(false);
           }}
         />
       )}
