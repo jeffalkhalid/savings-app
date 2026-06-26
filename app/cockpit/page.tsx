@@ -11,10 +11,13 @@ import {
   useUserSettings,
   useReminders,
   useGoals,
+  useAllTransactions,
+  useRecurringCharges,
 } from "@/lib/cockpit/hooks";
 import { computeMetrics } from "@/lib/cockpit/metrics";
 import { analyzeCategories } from "@/lib/cockpit/categories-analysis";
-import { fixedVariableFromInsights } from "@/lib/cockpit/fixed";
+import { detectRecurring } from "@/lib/cockpit/recurring-detect";
+import { matchMonth, engagementsTotals } from "@/lib/cockpit/recurring-match";
 import { pendingTransfers } from "@/lib/cockpit/transfers";
 import {
   ensureTransferCategories,
@@ -32,8 +35,8 @@ import { HeroCard } from "@/components/cockpit/HeroCard";
 import { StatStrip } from "@/components/cockpit/StatStrip";
 import { InsightsRow } from "@/components/cockpit/InsightsRow";
 import { CategoryBreakdown } from "@/components/cockpit/CategoryBreakdown";
-import { FixedVariableBar } from "@/components/cockpit/FixedVariableBar";
-import { FixedCategoriesModal } from "@/components/cockpit/FixedCategoriesModal";
+import { EngagementsBar } from "@/components/cockpit/EngagementsBar";
+import { EngagementsModal } from "@/components/cockpit/EngagementsModal";
 import { TransferTriage } from "@/components/cockpit/TransferTriage";
 import { TransferNudge } from "@/components/cockpit/TransferNudge";
 import { OpsDrill } from "@/components/cockpit/OpsDrill";
@@ -84,6 +87,8 @@ export default function DashboardPage() {
 
   const { txns, refetch } = useTransactions(month);
   const { categories, refetch: refetchCategories } = useCategories();
+  const { charges, refetch: refetchCharges } = useRecurringCharges();
+  const { txns: allTxns } = useAllTransactions();
   const { accounts } = useAccounts();
   const { rows: monthlyByCat, error: catError } = useMonthlyByCategory(user.id);
   const { settings, refetch: refetchSettings } = useUserSettings(user.id);
@@ -95,14 +100,31 @@ export default function DashboardPage() {
     () => analyzeCategories(monthlyByCat, month, categories),
     [monthlyByCat, month, categories]
   );
-  const fixedIds = useMemo(
-    () => new Set(categories.filter((c) => c.is_fixed).map((c) => c.id)),
-    [categories]
+  const monthExpenseTxns = useMemo(
+    () => txns.filter((t) => t.type === "expense"),
+    [txns]
   );
-  const split = useMemo(
-    () => fixedVariableFromInsights(insights, fixedIds),
-    [insights, fixedIds]
+  const matches = useMemo(
+    () =>
+      matchMonth(
+        charges.map((c) => ({
+          payeeKey: c.payee_key,
+          expected: Number(c.expected_amount),
+        })),
+        monthExpenseTxns
+      ),
+    [charges, monthExpenseTxns]
   );
+  const totals = useMemo(
+    () => engagementsTotals(matches, metrics.depenses),
+    [matches, metrics.depenses]
+  );
+  const candidates = useMemo(() => {
+    const confirmed = new Set(charges.map((c) => c.payee_key));
+    return detectRecurring(allTxns, month).filter(
+      (c) => !confirmed.has(c.payeeKey)
+    );
+  }, [allTxns, month, charges]);
   const transfers = useMemo(() => pendingTransfers(txns), [txns]);
   const goal = settings.savings_rate_goal;
   const mood = useMemo(
@@ -258,11 +280,11 @@ export default function DashboardPage() {
             busy={classifying}
           />
           <InsightsRow notes={notes} />
-          {metrics.depenses > 0 && (
-            <FixedVariableBar
-              fixe={split.fixe}
-              variable={split.variable}
-              fixedShare={split.fixedShare}
+          {(metrics.depenses > 0 || charges.length > 0) && (
+            <EngagementsBar
+              paid={totals.paid}
+              pending={totals.pending}
+              variable={totals.variable}
               onDrill={() => setShowFixed(true)}
             />
           )}
@@ -359,14 +381,13 @@ export default function DashboardPage() {
         />
       )}
       {showFixed && (
-        <FixedCategoriesModal
-          categories={categories}
-          insights={insights}
+        <EngagementsModal
+          userId={user.id}
+          charges={charges}
+          matches={matches}
+          candidates={candidates}
           onClose={() => setShowFixed(false)}
-          onSaved={() => {
-            refetchCategories();
-            setShowFixed(false);
-          }}
+          onChanged={refetchCharges}
         />
       )}
     </main>
