@@ -18,6 +18,7 @@ import { coerceSettings, DEFAULT_SETTINGS, type UserSettings } from "./settings"
 import type { MonthlyCategoryRow } from "./categories-analysis";
 import type { Reminder } from "./reminders";
 import { ensureSeed } from "./seed";
+import type { RecurringCharge } from "./recurring-charges-api";
 
 export type AuthUser = { id: string; email?: string };
 
@@ -198,7 +199,7 @@ export function useAllTransactions() {
   useEffect(() => {
     supabase
       .from("transactions")
-      .select("id,date,amount,type")
+      .select("id,date,amount,type,description")
       .then(({ data, error }) => {
         if (error) setError(error.message);
         else {
@@ -392,4 +393,22 @@ export function useAllocationTargets(userId: string) {
   }, [refetch]);
 
   return { targets, refetch };
+}
+
+export function useRecurringCharges() {
+  const [charges, setCharges] = useState<RecurringCharge[]>([]);
+
+  const refetch = useCallback(() => {
+    supabase
+      .from("recurring_charges")
+      .select("id,payee_key,label,expected_amount,active")
+      .eq("active", true)
+      .then(({ data }) => setCharges((data as RecurringCharge[]) ?? []));
+  }, []);
+
+  useEffect(() => {
+    refetch();
+  }, [refetch]);
+
+  return { charges, refetch };
 }
