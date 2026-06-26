@@ -6,25 +6,27 @@ export function TypeBreakdown({ lines }: { lines: PatrimoineLine[] }) {
   const rows = withShares(lines);
   if (!rows.length) return null;
   return (
-    <section className="mb-6">
-      <div className="text-xs uppercase tracking-[0.1em] text-ink-muted mb-2">
-        Répartition
-      </div>
-      {rows.map((r) => (
-        <div
-          key={r.type}
-          className="flex justify-between items-center py-2 border-b border-rule"
-        >
-          <div>
-            <div className="text-sm">{typeLabel(r.type)}</div>
-            <div className="text-[11px] text-ink-muted mt-0.5">
-              {r.n_assets} ligne{r.n_assets > 1 ? "s" : ""} ·{" "}
-              {Math.round(r.share * 100)}%
+    <section className="mb-4">
+      <div className="font-display text-[15px] mb-2">Répartition</div>
+      {rows.map((r) => {
+        const pct = Math.round(r.share * 100);
+        return (
+          <div key={r.type} className="py-2">
+            <div className="flex justify-between items-baseline">
+              <span className="text-sm">{typeLabel(r.type)}</span>
+              <span className="flex items-baseline gap-2">
+                <span className="font-mono-num text-sm">
+                  {eur(r.total_value)}
+                </span>
+                <span className="text-[11px] text-ink-muted">{pct}%</span>
+              </span>
+            </div>
+            <div className="h-1.5 rounded-full bg-rule overflow-hidden mt-1.5">
+              <div className="h-full bg-emerald" style={{ width: `${pct}%` }} />
             </div>
           </div>
-          <strong className="font-mono-num text-sm">{eur(r.total_value)}</strong>
-        </div>
-      ))}
+        );
+      })}
     </section>
   );
 }
