@@ -16,6 +16,7 @@ import { getUserSettings } from "./user-settings-api";
 import { coerceSettings, DEFAULT_SETTINGS, type UserSettings } from "./settings";
 import type { MonthlyCategoryRow } from "./categories-analysis";
 import type { Recurring } from "./fixed";
+import type { Reminder } from "./reminders";
 import { ensureSeed } from "./seed";
 
 export type AuthUser = { id: string; email?: string };
@@ -318,4 +319,32 @@ export function useUserSettings(userId: string) {
   }, [refetch]);
 
   return { settings, refetch };
+}
+
+export function useReminders() {
+  const [reminders, setReminders] = useState<Reminder[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const refetch = useCallback(() => {
+    setLoading(true);
+    supabase
+      .from("reminders")
+      .select("id,label,due_date,amount,done,created_at")
+      .order("due_date")
+      .then(({ data, error }) => {
+        if (error) setError(error.message);
+        else {
+          setError(null);
+          setReminders((data as Reminder[]) ?? []);
+        }
+        setLoading(false);
+      });
+  }, []);
+
+  useEffect(() => {
+    refetch();
+  }, [refetch]);
+
+  return { reminders, loading, error, refetch };
 }
