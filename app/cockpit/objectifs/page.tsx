@@ -1,8 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useAuth, useGoals } from "@/lib/cockpit/hooks";
-import { goalsSummary, type Goal } from "@/lib/cockpit/goals";
+import { useAuth, useGoals, useGoalContributions } from "@/lib/cockpit/hooks";
+import { goalsSummary, applyContributions, type Goal } from "@/lib/cockpit/goals";
 import { todayISO } from "@/lib/cockpit/format";
 import { Target, Plus } from "lucide-react";
 import { GoalRing } from "@/components/cockpit/goals/GoalRing";
@@ -16,8 +16,13 @@ export default function ObjectifsPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [editGoal, setEditGoal] = useState<Goal | null>(null);
   const [contribGoal, setContribGoal] = useState<Goal | null>(null);
+  const { contribByGoal } = useGoalContributions();
+  const effGoals = useMemo(
+    () => applyContributions(goals, contribByGoal),
+    [goals, contribByGoal]
+  );
   const today = todayISO();
-  const summary = useMemo(() => goalsSummary(goals), [goals]);
+  const summary = useMemo(() => goalsSummary(effGoals), [effGoals]);
 
   return (
     <main className="max-w-[600px] mx-auto px-5 pt-8">
@@ -46,15 +51,18 @@ export default function ObjectifsPage() {
         </div>
       )}
 
-      {goals.map((g) => (
-        <GoalCard
-          key={g.id}
-          goal={g}
-          today={today}
-          onContribute={() => setContribGoal(g)}
-          onEdit={() => setEditGoal(g)}
-        />
-      ))}
+      {effGoals.map((eg) => {
+        const orig = goals.find((g) => g.id === eg.id) ?? eg;
+        return (
+          <GoalCard
+            key={eg.id}
+            goal={eg}
+            today={today}
+            onContribute={() => setContribGoal(orig)}
+            onEdit={() => setEditGoal(orig)}
+          />
+        );
+      })}
 
       <button
         type="button"
