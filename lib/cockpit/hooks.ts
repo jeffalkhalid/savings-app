@@ -16,7 +16,6 @@ import { getUserSettings } from "./user-settings-api";
 import { getAllocationTargets } from "./allocation-api";
 import { coerceSettings, DEFAULT_SETTINGS, type UserSettings } from "./settings";
 import type { MonthlyCategoryRow } from "./categories-analysis";
-import type { Recurring } from "./fixed";
 import type { Reminder } from "./reminders";
 import { ensureSeed } from "./seed";
 
@@ -234,29 +233,6 @@ export function useMonthlyByCategory(userId: string) {
   }, [userId]);
 
   return { rows, loading, error };
-}
-
-export function useRecurring(userId: string) {
-  const [recurring, setRecurring] = useState<Recurring[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    supabase
-      .from("recurring")
-      .select("id,name,amount,day_of_month,frequency,category_id,account_id,active")
-      .eq("user_id", userId)
-      .then(({ data, error }) => {
-        if (error) setError(error.message);
-        else {
-          setError(null);
-          setRecurring((data as Recurring[]) ?? []);
-        }
-        setLoading(false);
-      });
-  }, [userId]);
-
-  return { recurring, loading, error };
 }
 
 export function useEnsureSeed(userId: string) {
