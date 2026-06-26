@@ -12,6 +12,8 @@ import { monthRange } from "./format";
 import type { Txn, Category, Account } from "./types";
 import type { Asset, AssetValuation, PatrimoineLine } from "./patrimoine";
 import type { Goal } from "./goals";
+import { getUserSettings } from "./user-settings-api";
+import { coerceSettings, DEFAULT_SETTINGS, type UserSettings } from "./settings";
 import type { MonthlyCategoryRow } from "./categories-analysis";
 import type { Recurring } from "./fixed";
 import { ensureSeed } from "./seed";
@@ -300,4 +302,20 @@ export function useGoals() {
   }, [refetch]);
 
   return { goals, loading, error, refetch };
+}
+
+export function useUserSettings(userId: string) {
+  const [settings, setSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
+
+  const refetch = useCallback(() => {
+    getUserSettings(userId)
+      .then((row) => setSettings(coerceSettings(row)))
+      .catch(() => setSettings(DEFAULT_SETTINGS));
+  }, [userId]);
+
+  useEffect(() => {
+    refetch();
+  }, [refetch]);
+
+  return { settings, refetch };
 }
