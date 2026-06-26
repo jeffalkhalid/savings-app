@@ -7,9 +7,13 @@ import {
   useAssets,
   useAssetValuations,
   usePatrimoineSummary,
+  useAllocationTargets,
 } from "@/lib/cockpit/hooks";
 import { buildPatrimoineSeries } from "@/lib/cockpit/patrimoine";
 import type { Asset } from "@/lib/cockpit/patrimoine";
+import { allocationRows } from "@/lib/cockpit/allocation";
+import { AllocationTargets } from "@/components/cockpit/patrimoine/AllocationTargets";
+import { AllocationModal } from "@/components/cockpit/patrimoine/AllocationModal";
 import { PatrimoineHero } from "@/components/cockpit/patrimoine/PatrimoineHero";
 import { PatrimoineChart } from "@/components/cockpit/patrimoine/PatrimoineChart";
 import { TypeBreakdown } from "@/components/cockpit/patrimoine/TypeBreakdown";
@@ -23,11 +27,13 @@ export default function PatrimoinePage() {
     useAssets();
   const { valuations, refetch: refetchVals } = useAssetValuations();
   const { lines, refetch: refetchSummary } = usePatrimoineSummary(user.id);
+  const { targets, refetch: refetchTargets } = useAllocationTargets(user.id);
   const { accounts } = useAccounts();
 
   const [showCreate, setShowCreate] = useState(false);
   const [selected, setSelected] = useState<Asset | null>(null);
   const [editAsset, setEditAsset] = useState<Asset | null>(null);
+  const [showAlloc, setShowAlloc] = useState(false);
 
   const series = useMemo(
     () => buildPatrimoineSeries(assets, valuations),
@@ -41,6 +47,11 @@ export default function PatrimoinePage() {
     series.length >= 2
       ? series[series.length - 1].total - series[series.length - 2].total
       : null;
+
+  const allocRows = useMemo(
+    () => allocationRows(lines, targets),
+    [lines, targets]
+  );
 
   const refetchAll = () => {
     refetchAssets();
@@ -61,6 +72,11 @@ export default function PatrimoinePage() {
       <PatrimoineHero total={total} delta={delta} count={assets.length} />
       <PatrimoineChart series={series} />
       <TypeBreakdown lines={lines} />
+      <AllocationTargets
+        rows={allocRows}
+        targets={targets}
+        onEdit={() => setShowAlloc(true)}
+      />
       <AssetList
         assets={assets}
         accounts={accounts}
@@ -106,6 +122,18 @@ export default function PatrimoinePage() {
           onEditAsset={() => {
             setEditAsset(selected);
             setSelected(null);
+          }}
+        />
+      )}
+
+      {showAlloc && (
+        <AllocationModal
+          userId={user.id}
+          targets={targets}
+          onClose={() => setShowAlloc(false)}
+          onSaved={() => {
+            refetchTargets();
+            setShowAlloc(false);
           }}
         />
       )}
