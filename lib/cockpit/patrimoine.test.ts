@@ -4,6 +4,7 @@ import {
   buildPatrimoineSeries,
   withShares,
   typeLabel,
+  convertedLines,
 } from "./patrimoine";
 import type { Asset, AssetValuation } from "./patrimoine";
 
@@ -100,5 +101,28 @@ describe("typeLabel", () => {
   });
   it("falls back to the raw type when unknown", () => {
     expect(typeLabel("crypto")).toBe("crypto");
+  });
+});
+
+describe("convertedLines", () => {
+  const rates = { EUR: 1, USD: 1.1 };
+  it("groups by type and sums converted values", () => {
+    const assets = [
+      { id: "1", account_id: null, name: "A", type: "stock", current_value: 100, currency: "EUR" },
+      { id: "2", account_id: null, name: "B", type: "stock", current_value: 100, currency: "USD" },
+      { id: "3", account_id: null, name: "C", type: "savings", current_value: 50, currency: "EUR" },
+    ];
+    const lines = convertedLines(assets, rates, "EUR");
+    const stock = lines.find((l) => l.type === "stock")!;
+    expect(stock.n_assets).toBe(2);
+    expect(stock.total_value).toBeCloseTo(100 + 100 / 1.1);
+  });
+  it("treats a missing currency as EUR", () => {
+    const lines = convertedLines(
+      [{ id: "1", account_id: null, name: "A", type: "cash", current_value: 200 }],
+      { EUR: 1 },
+      "EUR"
+    );
+    expect(lines[0].total_value).toBe(200);
   });
 });

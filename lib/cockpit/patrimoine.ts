@@ -1,3 +1,5 @@
+import { convert } from "./fx";
+
 export type Asset = {
   id: string;
   account_id: string | null;
@@ -6,6 +8,7 @@ export type Asset = {
   current_value: number;
   ticker?: string | null;
   quantity?: number | null;
+  currency?: string;
 };
 
 export type AssetValuation = {
@@ -76,4 +79,29 @@ const TYPE_LABELS: Record<string, string> = {
 
 export function typeLabel(type: string): string {
   return TYPE_LABELS[type] ?? type;
+}
+
+export function convertedLines(
+  assets: Asset[],
+  ratesEUR: Record<string, number>,
+  reporting: string
+): PatrimoineLine[] {
+  const byType: Record<string, { n: number; total: number }> = {};
+  for (const a of assets) {
+    const v = convert(
+      Number(a.current_value),
+      a.currency ?? "EUR",
+      reporting,
+      ratesEUR
+    );
+    const slot = byType[a.type] ?? { n: 0, total: 0 };
+    slot.n += 1;
+    slot.total += v;
+    byType[a.type] = slot;
+  }
+  return Object.entries(byType).map(([type, s]) => ({
+    type,
+    n_assets: s.n,
+    total_value: s.total,
+  }));
 }
