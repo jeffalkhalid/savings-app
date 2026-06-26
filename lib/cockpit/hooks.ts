@@ -13,6 +13,7 @@ import type { Txn, Category, Account } from "./types";
 import type { Asset, AssetValuation, PatrimoineLine } from "./patrimoine";
 import type { Goal } from "./goals";
 import { getUserSettings } from "./user-settings-api";
+import { getAllocationTargets } from "./allocation-api";
 import { coerceSettings, DEFAULT_SETTINGS, type UserSettings } from "./settings";
 import type { MonthlyCategoryRow } from "./categories-analysis";
 import type { Recurring } from "./fixed";
@@ -375,4 +376,20 @@ export function useGoalContributions() {
   }, [refetch]);
 
   return { contribByGoal, refetch };
+}
+
+export function useAllocationTargets(userId: string) {
+  const [targets, setTargets] = useState<Record<string, number>>({});
+
+  const refetch = useCallback(() => {
+    getAllocationTargets(userId)
+      .then(setTargets)
+      .catch(() => setTargets({}));
+  }, [userId]);
+
+  useEffect(() => {
+    refetch();
+  }, [refetch]);
+
+  return { targets, refetch };
 }
