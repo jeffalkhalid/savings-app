@@ -1,13 +1,14 @@
 import { eur } from "@/lib/cockpit/format";
 import type { CategoryInsight } from "@/lib/cockpit/categories-analysis";
+import type { LucideIcon } from "lucide-react";
 
 export function CategoryRow({
   insight,
-  icon,
+  Icon,
   onClick,
 }: {
   insight: CategoryInsight;
-  icon: string;
+  Icon: LucideIcon;
   onClick: () => void;
 }) {
   const pct = Math.round(insight.share * 100);
@@ -26,8 +27,8 @@ export function CategoryRow({
       onClick={onClick}
       className="w-full text-left flex items-center gap-3 py-2.5"
     >
-      <div className="w-9 h-9 rounded-xl bg-tile flex items-center justify-center text-[17px] shrink-0">
-        {icon}
+      <div className="w-9 h-9 rounded-xl bg-tile flex items-center justify-center shrink-0">
+        <Icon size={17} className="text-ink2" />
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex justify-between items-baseline gap-2">

@@ -19,7 +19,7 @@ export function CategoryBreakdown({
         <CategoryRow
           key={i.categoryId}
           insight={i}
-          icon={categoryIcon(i.name)}
+          Icon={categoryIcon(i.name)}
           onClick={() => onSelect(i.categoryId)}
         />
       ))}

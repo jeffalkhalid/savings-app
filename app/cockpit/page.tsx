@@ -21,6 +21,7 @@ import {
 import { savingsMood } from "@/lib/cockpit/mood";
 import { buildNotes } from "@/lib/cockpit/cockpit-notes";
 import { categoryIcon } from "@/lib/cockpit/category-icon";
+import { Wallet } from "lucide-react";
 import { currentMonth } from "@/lib/cockpit/format";
 import { supabase } from "@/lib/cockpit/supabase";
 import { updateTransaction } from "@/lib/cockpit/transactions-api";
@@ -198,7 +199,7 @@ export default function DashboardPage() {
         <OpsDrill
           mode={drill.kind === "all" ? "all" : "category"}
           title={drill.kind === "all" ? "Toutes les dépenses" : drillCat?.name ?? ""}
-          icon={drill.kind === "all" ? "💸" : categoryIcon(drillCat?.name ?? "")}
+          Icon={drill.kind === "all" ? Wallet : categoryIcon(drillCat?.name ?? "")}
           txns={drillTxns}
           categories={categories}
           query={query}

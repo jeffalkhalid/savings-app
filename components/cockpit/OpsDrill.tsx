@@ -1,11 +1,12 @@
 import { eur } from "@/lib/cockpit/format";
 import { filterTxns } from "@/lib/cockpit/txn-filter";
 import type { Txn, Category } from "@/lib/cockpit/types";
+import { SearchX, type LucideIcon } from "lucide-react";
 
 export function OpsDrill({
   mode,
   title,
-  icon,
+  Icon,
   txns,
   categories,
   query,
@@ -17,7 +18,7 @@ export function OpsDrill({
 }: {
   mode: "category" | "all";
   title: string;
-  icon: string;
+  Icon: LucideIcon;
   txns: Txn[];
   categories: Category[];
   query: string;
@@ -53,8 +54,8 @@ export function OpsDrill({
         ‹ Retour
       </button>
       <div className="flex items-center gap-3 mb-3">
-        <div className="w-10 h-10 rounded-xl bg-tile flex items-center justify-center text-lg">
-          {icon}
+        <div className="w-10 h-10 rounded-xl bg-tile flex items-center justify-center">
+          <Icon size={20} className="text-ink2" />
         </div>
         <div>
           <div className="font-display text-lg">{title}</div>
@@ -129,7 +130,7 @@ export function OpsDrill({
 
       {!shown.length && (
         <div className="text-center py-8 text-ink-muted">
-          <div className="text-3xl mb-1.5">🔍</div>
+          <SearchX size={28} className="mx-auto mb-1.5" />
           <div className="text-sm font-semibold text-ink">Aucune opération</div>
           <div className="text-xs mt-0.5">
             Essaie un autre mot{mode === "all" ? " ou une autre catégorie" : ""}.
