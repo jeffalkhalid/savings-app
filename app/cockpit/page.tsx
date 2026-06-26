@@ -8,14 +8,13 @@ import {
   useCategories,
   useAccounts,
   useMonthlyByCategory,
-  useRecurring,
   useUserSettings,
   useReminders,
   useGoals,
 } from "@/lib/cockpit/hooks";
 import { computeMetrics } from "@/lib/cockpit/metrics";
 import { analyzeCategories } from "@/lib/cockpit/categories-analysis";
-import { monthlyFixedTotal, fixedVariableSplit } from "@/lib/cockpit/fixed";
+import { fixedVariableFromInsights } from "@/lib/cockpit/fixed";
 import { pendingTransfers } from "@/lib/cockpit/transfers";
 import {
   ensureTransferCategories,
@@ -34,7 +33,7 @@ import { StatStrip } from "@/components/cockpit/StatStrip";
 import { InsightsRow } from "@/components/cockpit/InsightsRow";
 import { CategoryBreakdown } from "@/components/cockpit/CategoryBreakdown";
 import { FixedVariableBar } from "@/components/cockpit/FixedVariableBar";
-import { FixedChargesList } from "@/components/cockpit/FixedChargesList";
+import { FixedCategoriesModal } from "@/components/cockpit/FixedCategoriesModal";
 import { TransferTriage } from "@/components/cockpit/TransferTriage";
 import { TransferNudge } from "@/components/cockpit/TransferNudge";
 import { OpsDrill } from "@/components/cockpit/OpsDrill";
@@ -87,7 +86,6 @@ export default function DashboardPage() {
   const { categories, refetch: refetchCategories } = useCategories();
   const { accounts } = useAccounts();
   const { rows: monthlyByCat, error: catError } = useMonthlyByCategory(user.id);
-  const { recurring } = useRecurring(user.id);
   const { settings, refetch: refetchSettings } = useUserSettings(user.id);
   const { reminders, refetch: refetchReminders } = useReminders();
   const { goals } = useGoals();
@@ -97,10 +95,13 @@ export default function DashboardPage() {
     () => analyzeCategories(monthlyByCat, month, categories),
     [monthlyByCat, month, categories]
   );
-  const fixedTotal = useMemo(() => monthlyFixedTotal(recurring), [recurring]);
+  const fixedIds = useMemo(
+    () => new Set(categories.filter((c) => c.is_fixed).map((c) => c.id)),
+    [categories]
+  );
   const split = useMemo(
-    () => fixedVariableSplit(metrics.depenses, fixedTotal),
-    [metrics.depenses, fixedTotal]
+    () => fixedVariableFromInsights(insights, fixedIds),
+    [insights, fixedIds]
   );
   const transfers = useMemo(() => pendingTransfers(txns), [txns]);
   const goal = settings.savings_rate_goal;
@@ -228,12 +229,6 @@ export default function DashboardPage() {
             onBack={() => setShowTransfers(false)}
           />
         </>
-      ) : showFixed ? (
-        <FixedChargesList
-          recurring={recurring}
-          categories={categories}
-          onBack={() => setShowFixed(false)}
-        />
       ) : drill ? (
         <OpsDrill
           mode={drill.kind === "all" ? "all" : "category"}
@@ -263,7 +258,7 @@ export default function DashboardPage() {
             busy={classifying}
           />
           <InsightsRow notes={notes} />
-          {fixedTotal > 0 && (
+          {metrics.depenses > 0 && (
             <FixedVariableBar
               fixe={split.fixe}
               variable={split.variable}
@@ -360,6 +355,17 @@ export default function DashboardPage() {
           onSaved={() => {
             refetchCategories();
             setShowBudgets(false);
+          }}
+        />
+      )}
+      {showFixed && (
+        <FixedCategoriesModal
+          categories={categories}
+          insights={insights}
+          onClose={() => setShowFixed(false)}
+          onSaved={() => {
+            refetchCategories();
+            setShowFixed(false);
           }}
         />
       )}
