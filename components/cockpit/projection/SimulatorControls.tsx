@@ -16,6 +16,7 @@ export function SimulatorControls({
   onYears: (v: number) => void;
 }) {
   const labelCls = "grid gap-1.5 text-[13px] text-ink-muted";
+  const valueCls = "text-accent font-semibold";
   return (
     <section className="grid gap-5 mb-6">
       <label className={labelCls}>
@@ -31,7 +32,10 @@ export function SimulatorControls({
         />
       </label>
       <label className={labelCls}>
-        Rendement annuel · {(rate * 100).toFixed(1)} %
+        <span className="flex justify-between">
+          <span>Rendement annuel</span>
+          <span className={valueCls}>{(rate * 100).toFixed(1)} %</span>
+        </span>
         <input
           type="range"
           min={0}
@@ -42,7 +46,10 @@ export function SimulatorControls({
         />
       </label>
       <label className={labelCls}>
-        Horizon · {years} ans
+        <span className="flex justify-between">
+          <span>Horizon</span>
+          <span className={valueCls}>{years} ans</span>
+        </span>
         <input
           type="range"
           min={1}
