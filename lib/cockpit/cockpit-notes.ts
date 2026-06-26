@@ -2,22 +2,16 @@ import type { CategoryInsight } from "./categories-analysis";
 import type { Mood } from "./mood";
 
 export type Note = {
-  icon: string;
+  kind: "status" | "rise" | "dominant";
   title: string;
   body: string;
   tone: Mood["tone"];
 };
 
-const STATUS_ICON: Record<Mood["tone"], string> = {
-  good: "🌱",
-  ok: "👍",
-  watch: "⚠️",
-};
-
 export function buildNotes(insights: CategoryInsight[], mood: Mood): Note[] {
   const notes: Note[] = [
     {
-      icon: STATUS_ICON[mood.tone],
+      kind: "status",
       title: mood.label,
       body: "Ton taux d'épargne ce mois",
       tone: mood.tone,
@@ -33,7 +27,7 @@ export function buildNotes(insights: CategoryInsight[], mood: Mood): Note[] {
       (b.deltaPct as number) > (a.deltaPct as number) ? b : a
     );
     notes.push({
-      icon: "📈",
+      kind: "rise",
       title: top.name,
       body: `+${Math.round((top.deltaPct as number) * 100)}% vs ton habitude`,
       tone: "watch",
@@ -45,7 +39,7 @@ export function buildNotes(insights: CategoryInsight[], mood: Mood): Note[] {
     const dom = insights.reduce((a, b) => (b.share > a.share ? b : a));
     if (!seen.has(dom.name)) {
       notes.push({
-        icon: "📊",
+        kind: "dominant",
         title: dom.name,
         body: `${Math.round(dom.share * 100)}% de tes dépenses`,
         tone: "ok",

@@ -19,6 +19,7 @@ describe("buildNotes", () => {
   it("always includes the savings status card first", () => {
     const notes = buildNotes([], mood);
     expect(notes).toHaveLength(1);
+    expect(notes[0].kind).toBe("status");
     expect(notes[0].title).toBe("Bien");
     expect(notes[0].tone).toBe("ok");
   });
@@ -30,7 +31,7 @@ describe("buildNotes", () => {
       ],
       mood
     );
-    const rise = notes.find((n) => n.icon === "📈");
+    const rise = notes.find((n) => n.kind === "rise");
     expect(rise?.title).toBe("Resto");
     expect(rise?.body).toContain("+40%");
   });
@@ -39,7 +40,7 @@ describe("buildNotes", () => {
       [mk({ categoryId: "b", name: "Courses", share: 0.5, deltaPct: null })],
       mood
     );
-    const dom = notes.find((n) => n.icon === "📊");
+    const dom = notes.find((n) => n.kind === "dominant");
     expect(dom?.title).toBe("Courses");
     expect(dom?.body).toContain("50%");
   });
