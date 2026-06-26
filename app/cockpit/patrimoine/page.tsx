@@ -16,7 +16,6 @@ import { TypeBreakdown } from "@/components/cockpit/patrimoine/TypeBreakdown";
 import { AssetList } from "@/components/cockpit/patrimoine/AssetList";
 import { AssetModal } from "@/components/cockpit/patrimoine/AssetModal";
 import { ValuationModal } from "@/components/cockpit/patrimoine/ValuationModal";
-import { Fab } from "@/components/cockpit/Fab";
 
 export default function PatrimoinePage() {
   const user = useAuth();
@@ -70,8 +69,6 @@ export default function PatrimoinePage() {
         onSelect={setSelected}
         onAdd={() => setShowCreate(true)}
       />
-
-      <Fab onClick={() => setShowCreate(true)} label="Ajouter un asset" />
 
       {showCreate && (
         <AssetModal
