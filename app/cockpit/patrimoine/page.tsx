@@ -6,10 +6,11 @@ import {
   useAccounts,
   useAssets,
   useAssetValuations,
-  usePatrimoineSummary,
   useAllocationTargets,
+  useFxRates,
+  useUserSettings,
 } from "@/lib/cockpit/hooks";
-import { buildPatrimoineSeries } from "@/lib/cockpit/patrimoine";
+import { buildPatrimoineSeries, convertedLines } from "@/lib/cockpit/patrimoine";
 import type { Asset } from "@/lib/cockpit/patrimoine";
 import { allocationRows } from "@/lib/cockpit/allocation";
 import { AllocationTargets } from "@/components/cockpit/patrimoine/AllocationTargets";
@@ -26,9 +27,11 @@ export default function PatrimoinePage() {
   const { assets, loading: aLoading, error: aError, refetch: refetchAssets } =
     useAssets();
   const { valuations, refetch: refetchVals } = useAssetValuations();
-  const { lines, refetch: refetchSummary } = usePatrimoineSummary(user.id);
   const { targets, refetch: refetchTargets } = useAllocationTargets(user.id);
   const { accounts } = useAccounts();
+  const { ratesEUR, date: fxDate } = useFxRates();
+  const { settings } = useUserSettings(user.id);
+  const reporting = settings.reporting_currency;
 
   const [showCreate, setShowCreate] = useState(false);
   const [selected, setSelected] = useState<Asset | null>(null);
@@ -39,9 +42,10 @@ export default function PatrimoinePage() {
     () => buildPatrimoineSeries(assets, valuations),
     [assets, valuations]
   );
-  // Total = somme des current_value (via v_patrimoine). Invariant : current_value
-  // est tenu synchro à la dernière valuation par syncCurrentValue, donc ce total
-  // coïncide avec le dernier point de `series`. Deux sources, un seul réel.
+  const lines = useMemo(
+    () => convertedLines(assets, ratesEUR, reporting),
+    [assets, ratesEUR, reporting]
+  );
   const total = lines.reduce((a, l) => a + Number(l.total_value), 0);
   const delta =
     series.length >= 2
@@ -56,7 +60,6 @@ export default function PatrimoinePage() {
   const refetchAll = () => {
     refetchAssets();
     refetchVals();
-    refetchSummary();
   };
 
   const selectedValuations = selected
@@ -67,6 +70,12 @@ export default function PatrimoinePage() {
     <main className="max-w-[600px] mx-auto px-5 pt-8">
       <header className="mb-6">
         <h1 className="font-display text-2xl">Patrimoine</h1>
+        {reporting !== "EUR" && (
+          <p className="text-[11px] text-ink-muted mt-1">
+            Converti en {reporting}
+            {fxDate ? ` · taux du ${fxDate}` : ""}
+          </p>
+        )}
       </header>
 
       <PatrimoineHero total={total} delta={delta} count={assets.length} />
@@ -82,6 +91,8 @@ export default function PatrimoinePage() {
         accounts={accounts}
         loading={aLoading}
         error={aError}
+        ratesEUR={ratesEUR}
+        reporting={reporting}
         onSelect={setSelected}
         onAdd={() => setShowCreate(true)}
       />
