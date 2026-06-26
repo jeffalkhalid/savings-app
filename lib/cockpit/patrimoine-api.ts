@@ -24,6 +24,7 @@ export async function createAsset(input: {
   accountId: string | null;
   ticker: string | null;
   quantity: number | null;
+  currency: string;
   initialValue: number;
   date: string;
 }): Promise<string> {
@@ -37,6 +38,7 @@ export async function createAsset(input: {
       current_value: input.initialValue,
       ticker: input.ticker,
       quantity: input.quantity,
+      currency: input.currency,
     })
     .select("id")
     .single();
@@ -59,6 +61,7 @@ export async function updateAsset(input: {
   accountId: string | null;
   ticker: string | null;
   quantity: number | null;
+  currency: string;
 }): Promise<void> {
   const { error } = await supabase
     .from("assets")
@@ -68,6 +71,7 @@ export async function updateAsset(input: {
       account_id: input.accountId,
       ticker: input.ticker,
       quantity: input.quantity,
+      currency: input.currency,
     })
     .eq("id", input.id);
   if (error) throw new Error(error.message);

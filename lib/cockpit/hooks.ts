@@ -116,7 +116,7 @@ export function useAssets() {
     setLoading(true);
     supabase
       .from("assets")
-      .select("id,account_id,name,type,current_value,ticker,quantity")
+      .select("id,account_id,name,type,current_value,ticker,quantity,currency")
       .order("name")
       .then(({ data, error }) => {
         if (error) setError(error.message);

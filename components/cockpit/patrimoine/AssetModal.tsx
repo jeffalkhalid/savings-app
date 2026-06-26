@@ -5,6 +5,7 @@ import { createAsset, updateAsset, deleteAsset } from "@/lib/cockpit/patrimoine-
 import { todayISO } from "@/lib/cockpit/format";
 import type { Account } from "@/lib/cockpit/types";
 import type { Asset } from "@/lib/cockpit/patrimoine";
+import { CURRENCIES } from "@/lib/cockpit/settings";
 
 const TYPES = [
   { v: "stock", label: "Actions (PEA, Natixis)" },
@@ -30,6 +31,7 @@ export function AssetModal({
   const [name, setName] = useState(asset?.name ?? "");
   const [type, setType] = useState(asset?.type ?? "stock");
   const [accountId, setAccountId] = useState(asset?.account_id ?? accounts[0]?.id ?? "");
+  const [currency, setCurrency] = useState(asset?.currency ?? "EUR");
   const [ticker, setTicker] = useState(asset?.ticker ?? "");
   const [quantity, setQuantity] = useState(
     asset?.quantity != null ? String(asset.quantity) : ""
@@ -59,6 +61,7 @@ export function AssetModal({
           accountId: accountId || null,
           ticker: ticker.trim() || null,
           quantity: qty,
+          currency,
         });
       } else {
         const v = parseFloat(initialValue.replace(",", "."));
@@ -74,6 +77,7 @@ export function AssetModal({
           accountId: accountId || null,
           ticker: ticker.trim() || null,
           quantity: qty,
+          currency,
           initialValue: v,
           date: todayISO(),
         });
@@ -136,6 +140,20 @@ export function AssetModal({
               {TYPES.map((t) => (
                 <option key={t.v} value={t.v}>
                   {t.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className={labelCls}>
+            Devise
+            <select
+              className={field}
+              value={currency}
+              onChange={(e) => setCurrency(e.target.value)}
+            >
+              {CURRENCIES.map((c) => (
+                <option key={c} value={c}>
+                  {c}
                 </option>
               ))}
             </select>
