@@ -18,7 +18,7 @@ describe("matchMonth", () => {
     { payeeKey: "assurance", expected: 40 },
   ];
   const monthTxns = [
-    t({ amount: -800, description: "LOYER JUIN" }),
+    t({ amount: -800, description: "LOYER" }),
     t({ amount: -20, description: "NETFLIX 06" }),
   ];
   it("matches by normalized payee and sets status/drift", () => {

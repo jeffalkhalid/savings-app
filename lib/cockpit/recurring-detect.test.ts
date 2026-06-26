@@ -22,13 +22,14 @@ describe("detectRecurring", () => {
   const month = "2026-06";
   it("flags a payee seen in >=3 months with the median amount", () => {
     const txns: Txn[] = [
-      t({ date: "2026-04-03", amount: -800, description: "LOYER AVRIL" }),
-      t({ date: "2026-05-03", amount: -800, description: "LOYER MAI" }),
-      t({ date: "2026-06-03", amount: -820, description: "LOYER JUIN" }),
+      t({ date: "2026-04-03", amount: -800, description: "PRLV LOYER 0403" }),
+      t({ date: "2026-05-03", amount: -800, description: "PRLV LOYER 0503" }),
+      t({ date: "2026-06-03", amount: -820, description: "PRLV LOYER 0603" }),
       t({ date: "2026-06-10", amount: -30, description: "BOULANGERIE" }),
     ];
     const out = detectRecurring(txns, month);
-    const loyer = out.find((c) => c.payeeKey === "loyer");
+    // digits/dates are stripped, so the recurring key is the stable "prlv loyer".
+    const loyer = out.find((c) => c.payeeKey === "prlv loyer");
     expect(loyer).toBeTruthy();
     expect(loyer!.monthsSeen).toBe(3);
     expect(loyer!.expected).toBe(800);

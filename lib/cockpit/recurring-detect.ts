@@ -10,12 +10,6 @@ export function normalizePayee(s: string): string {
     .trim();
 }
 
-// Grouping key for recurrence matching: the first significant token of the
-// normalized payee. "LOYER AVRIL"/"LOYER MAI" -> "loyer", "NETFLIX 06" -> "netflix".
-export function payeeKeyOf(s: string): string {
-  return normalizePayee(s).split(" ")[0] ?? "";
-}
-
 export type RecurringCandidate = {
   payeeKey: string;
   label: string;
@@ -55,7 +49,7 @@ export function detectRecurring(
     if (t.type !== "expense") continue;
     const ym = t.date.slice(0, 7);
     if (!months.has(ym)) continue;
-    const key = payeeKeyOf(t.description);
+    const key = normalizePayee(t.description);
     if (!key) continue;
     const g = groups.get(key) ?? { byMonth: new Map(), labels: new Map() };
     g.byMonth.set(ym, (g.byMonth.get(ym) ?? 0) + Math.abs(Number(t.amount)));
