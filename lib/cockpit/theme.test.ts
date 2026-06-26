@@ -1,18 +1,27 @@
 import { describe, it, expect } from "vitest";
-import { resolveInitialTheme, nextTheme } from "./theme";
+import { normalizePref, resolveTheme, nextTheme } from "./theme";
 
-describe("resolveInitialTheme", () => {
-  it("uses the stored value when explicit", () => {
-    expect(resolveInitialTheme("dark", false)).toBe("dark");
-    expect(resolveInitialTheme("light", true)).toBe("light");
+describe("normalizePref", () => {
+  it("keeps valid prefs", () => {
+    expect(normalizePref("light")).toBe("light");
+    expect(normalizePref("dark")).toBe("dark");
+    expect(normalizePref("system")).toBe("system");
   });
-  it("falls back to the system preference when not stored", () => {
-    expect(resolveInitialTheme(null, true)).toBe("dark");
-    expect(resolveInitialTheme(null, false)).toBe("light");
+  it("defaults unknown/null to system", () => {
+    expect(normalizePref(null)).toBe("system");
+    expect(normalizePref("")).toBe("system");
+    expect(normalizePref("bogus")).toBe("system");
   });
-  it("falls back to the system preference when stored is unknown", () => {
-    expect(resolveInitialTheme("", true)).toBe("dark");
-    expect(resolveInitialTheme("bogus", false)).toBe("light");
+});
+
+describe("resolveTheme", () => {
+  it("follows the OS when system", () => {
+    expect(resolveTheme("system", true)).toBe("dark");
+    expect(resolveTheme("system", false)).toBe("light");
+  });
+  it("uses the explicit pref otherwise", () => {
+    expect(resolveTheme("dark", false)).toBe("dark");
+    expect(resolveTheme("light", true)).toBe("light");
   });
 });
 

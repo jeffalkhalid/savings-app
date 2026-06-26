@@ -36,7 +36,6 @@ import { FixedChargesList } from "@/components/cockpit/FixedChargesList";
 import { TransferTriage } from "@/components/cockpit/TransferTriage";
 import { TransferNudge } from "@/components/cockpit/TransferNudge";
 import { OpsDrill } from "@/components/cockpit/OpsDrill";
-import { ThemeToggle } from "@/components/cockpit/ThemeToggle";
 import { Fab } from "@/components/cockpit/Fab";
 import { TxnModal } from "@/components/cockpit/TxnModal";
 
@@ -162,7 +161,6 @@ export default function DashboardPage() {
       <header className="flex justify-between items-center mb-6">
         <h1 className="font-display text-2xl">Cockpit</h1>
         <div className="flex items-center gap-2">
-          <ThemeToggle />
           <MonthSwitcher month={month} onChange={changeMonth} />
           <Link href="/cockpit/import" className="text-ink-muted text-sm">
             Import
