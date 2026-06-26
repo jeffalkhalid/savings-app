@@ -20,8 +20,9 @@ export function ProjectionControls({
   onYears: (v: number) => void;
 }) {
   const labelCls = "grid gap-1.5 text-[13px] text-ink-muted";
+  const valueCls = "text-accent font-semibold";
   return (
-    <section className="grid gap-5">
+    <section className="grid gap-5 mt-5">
       <label className={labelCls}>
         Épargne mensuelle (€)
         <input
@@ -38,7 +39,10 @@ export function ProjectionControls({
         </span>
       </label>
       <label className={labelCls}>
-        Rendement annuel · {(rate * 100).toFixed(1)} %
+        <span className="flex justify-between">
+          <span>Rendement annuel</span>
+          <span className={valueCls}>{(rate * 100).toFixed(1)} %</span>
+        </span>
         <input
           type="range"
           min={0}
@@ -49,7 +53,10 @@ export function ProjectionControls({
         />
       </label>
       <label className={labelCls}>
-        Horizon · {years} ans
+        <span className="flex justify-between">
+          <span>Horizon</span>
+          <span className={valueCls}>{years} ans</span>
+        </span>
         <input
           type="range"
           min={1}
