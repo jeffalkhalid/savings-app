@@ -8,6 +8,7 @@ export type Txn = {
   type: TxnType;
   category_id?: string | null;
   account_id?: string | null;
+  goal_id?: string | null;
 };
 
 export type Category = {

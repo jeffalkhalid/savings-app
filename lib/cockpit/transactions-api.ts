@@ -9,6 +9,7 @@ export type TxnFields = {
   categoryName: string;
   accountId: string;
   categoryType: string;
+  goalId?: string | null;
 };
 
 // Shared column mapping. description falls back to the category name;
@@ -22,6 +23,7 @@ function row(f: TxnFields) {
     category_id: f.categoryId,
     account_id: f.accountId,
     type: f.categoryType,
+    goal_id: f.categoryType === "savings" ? (f.goalId ?? null) : null,
   };
 }
 

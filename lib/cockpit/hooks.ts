@@ -351,3 +351,28 @@ export function useReminders() {
 
   return { reminders, loading, error, refetch };
 }
+
+export function useGoalContributions() {
+  const [contribByGoal, setContribByGoal] = useState<Record<string, number>>({});
+
+  const refetch = useCallback(() => {
+    supabase
+      .from("transactions")
+      .select("goal_id,amount")
+      .eq("type", "savings")
+      .not("goal_id", "is", null)
+      .then(({ data }) => {
+        const m: Record<string, number> = {};
+        for (const r of (data as { goal_id: string; amount: number }[]) ?? []) {
+          m[r.goal_id] = (m[r.goal_id] ?? 0) + Math.abs(Number(r.amount));
+        }
+        setContribByGoal(m);
+      });
+  }, []);
+
+  useEffect(() => {
+    refetch();
+  }, [refetch]);
+
+  return { contribByGoal, refetch };
+}
