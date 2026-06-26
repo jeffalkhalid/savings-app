@@ -4,6 +4,7 @@ import {
   monthsLeft,
   suggestedMonthly,
   goalsSummary,
+  applyContributions,
   type Goal,
 } from "./goals";
 
@@ -77,5 +78,26 @@ describe("goalsSummary", () => {
   });
   it("empty list yields zeros", () => {
     expect(goalsSummary([])).toEqual({ totalCurrent: 0, totalTarget: 0, pct: 0 });
+  });
+});
+
+describe("applyContributions", () => {
+  it("adds linked contributions to the base current_amount", () => {
+    const out = applyContributions(
+      [
+        { id: "a", name: "A", icon: "target", target_amount: 1000, current_amount: 100, deadline: null },
+        { id: "b", name: "B", icon: "target", target_amount: 1000, current_amount: 0, deadline: null },
+      ],
+      { a: 50 }
+    );
+    expect(out[0].current_amount).toBe(150);
+    expect(out[1].current_amount).toBe(0);
+  });
+  it("leaves goals unchanged with an empty map", () => {
+    const out = applyContributions(
+      [{ id: "a", name: "A", icon: "target", target_amount: 1000, current_amount: 100, deadline: null }],
+      {}
+    );
+    expect(out[0].current_amount).toBe(100);
   });
 });

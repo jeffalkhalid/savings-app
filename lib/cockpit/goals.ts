@@ -51,3 +51,13 @@ export function goalsSummary(goals: Goal[]): {
     totalTarget > 0 ? Math.max(0, Math.min(1, totalCurrent / totalTarget)) : 0;
   return { totalCurrent, totalTarget, pct };
 }
+
+export function applyContributions(
+  goals: Goal[],
+  contribByGoal: Record<string, number>
+): Goal[] {
+  return goals.map((g) => ({
+    ...g,
+    current_amount: Number(g.current_amount) + (contribByGoal[g.id] ?? 0),
+  }));
+}
