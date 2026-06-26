@@ -11,6 +11,7 @@ import { supabase } from "./supabase";
 import { monthRange } from "./format";
 import type { Txn, Category, Account } from "./types";
 import type { Asset, AssetValuation, PatrimoineLine } from "./patrimoine";
+import type { Goal } from "./goals";
 import type { MonthlyCategoryRow } from "./categories-analysis";
 import type { Recurring } from "./fixed";
 import { ensureSeed } from "./seed";
@@ -271,4 +272,32 @@ export function useEnsureSeed(userId: string) {
   }, [userId]);
 
   return { ready, error };
+}
+
+export function useGoals() {
+  const [goals, setGoals] = useState<Goal[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const refetch = useCallback(() => {
+    setLoading(true);
+    supabase
+      .from("goals")
+      .select("id,name,icon,target_amount,current_amount,deadline,created_at")
+      .order("created_at")
+      .then(({ data, error }) => {
+        if (error) setError(error.message);
+        else {
+          setError(null);
+          setGoals((data as Goal[]) ?? []);
+        }
+        setLoading(false);
+      });
+  }, []);
+
+  useEffect(() => {
+    refetch();
+  }, [refetch]);
+
+  return { goals, loading, error, refetch };
 }
