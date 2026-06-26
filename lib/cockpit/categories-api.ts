@@ -10,3 +10,14 @@ export async function setCategoryBudget(
     .eq("id", id);
   if (error) throw new Error(error.message);
 }
+
+export async function setCategoryFixed(
+  id: string,
+  value: boolean
+): Promise<void> {
+  const { error } = await supabase
+    .from("categories")
+    .update({ is_fixed: value })
+    .eq("id", id);
+  if (error) throw new Error(error.message);
+}

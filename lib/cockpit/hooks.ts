@@ -85,7 +85,7 @@ export function useCategories() {
   const refetch = useCallback(() => {
     supabase
       .from("categories")
-      .select("id,name,type,color,monthly_budget")
+      .select("id,name,type,color,monthly_budget,is_fixed")
       .order("name")
       .then(({ data }) => setCategories((data as Category[]) ?? []));
   }, []);
