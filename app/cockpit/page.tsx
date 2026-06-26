@@ -10,6 +10,7 @@ import {
   useMonthlyByCategory,
   useRecurring,
   useUserSettings,
+  useReminders,
 } from "@/lib/cockpit/hooks";
 import { computeMetrics } from "@/lib/cockpit/metrics";
 import { analyzeCategories } from "@/lib/cockpit/categories-analysis";
@@ -22,8 +23,8 @@ import {
 import { savingsMood } from "@/lib/cockpit/mood";
 import { buildNotes } from "@/lib/cockpit/cockpit-notes";
 import { categoryIcon } from "@/lib/cockpit/category-icon";
-import { Wallet, TrendingUp, PiggyBank, ArrowLeftRight, Settings, type LucideIcon } from "lucide-react";
-import { currentMonth } from "@/lib/cockpit/format";
+import { Wallet, TrendingUp, PiggyBank, ArrowLeftRight, Settings, Bell, type LucideIcon } from "lucide-react";
+import { currentMonth, todayISO } from "@/lib/cockpit/format";
 import { updateTransaction } from "@/lib/cockpit/transactions-api";
 import type { Txn, TxnType } from "@/lib/cockpit/types";
 import { MonthSwitcher } from "@/components/cockpit/MonthSwitcher";
@@ -39,6 +40,10 @@ import { OpsDrill } from "@/components/cockpit/OpsDrill";
 import { Fab } from "@/components/cockpit/Fab";
 import { TxnModal } from "@/components/cockpit/TxnModal";
 import { ReglagesModal } from "@/components/cockpit/ReglagesModal";
+import { dueCount, type Reminder } from "@/lib/cockpit/reminders";
+import { setReminderDone } from "@/lib/cockpit/reminders-api";
+import { RemindersModal } from "@/components/cockpit/RemindersModal";
+import { ReminderModal } from "@/components/cockpit/ReminderModal";
 
 
 const monthLabelOf = (m: string) =>
@@ -70,6 +75,8 @@ export default function DashboardPage() {
   const [showFixed, setShowFixed] = useState(false);
   const [showTransfers, setShowTransfers] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showReminders, setShowReminders] = useState(false);
+  const [reminderForm, setReminderForm] = useState<Reminder | "new" | null>(null);
   const [transferError, setTransferError] = useState<string | null>(null);
   const [classifying, setClassifying] = useState(false);
 
@@ -79,6 +86,7 @@ export default function DashboardPage() {
   const { rows: monthlyByCat, error: catError } = useMonthlyByCategory(user.id);
   const { recurring } = useRecurring(user.id);
   const { settings, refetch: refetchSettings } = useUserSettings(user.id);
+  const { reminders, refetch: refetchReminders } = useReminders();
 
   const metrics = useMemo(() => computeMetrics(txns), [txns]);
   const insights = useMemo(
@@ -98,6 +106,8 @@ export default function DashboardPage() {
   );
   const notes = useMemo(() => buildNotes(insights, mood), [insights, mood]);
   const label = monthLabelOf(month);
+  const today = todayISO();
+  const reminderDue = dueCount(reminders, today);
 
   const drillCat =
     drill?.kind === "category"
@@ -169,6 +179,19 @@ export default function DashboardPage() {
           <Link href="/cockpit/import" className="text-ink-muted text-sm">
             Import
           </Link>
+          <button
+            onClick={() => setShowReminders(true)}
+            aria-label="Rappels"
+            className="relative text-ink-muted"
+            type="button"
+          >
+            <Bell size={18} />
+            {reminderDue > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 rounded-full bg-accent text-[#FBF3EC] text-[10px] font-bold flex items-center justify-center">
+                {reminderDue}
+              </span>
+            )}
+          </button>
           <button
             onClick={() => setShowSettings(true)}
             aria-label="Réglages"
@@ -291,6 +314,31 @@ export default function DashboardPage() {
           onSaved={() => {
             refetchSettings();
             setShowSettings(false);
+          }}
+        />
+      )}
+
+      {showReminders && (
+        <RemindersModal
+          reminders={reminders}
+          today={today}
+          onAdd={() => setReminderForm("new")}
+          onEdit={(r) => setReminderForm(r)}
+          onToggleDone={async (r) => {
+            await setReminderDone(r.id, !r.done);
+            refetchReminders();
+          }}
+          onClose={() => setShowReminders(false)}
+        />
+      )}
+      {reminderForm && (
+        <ReminderModal
+          userId={user.id}
+          reminder={reminderForm === "new" ? null : reminderForm}
+          onClose={() => setReminderForm(null)}
+          onSaved={() => {
+            refetchReminders();
+            setReminderForm(null);
           }}
         />
       )}
