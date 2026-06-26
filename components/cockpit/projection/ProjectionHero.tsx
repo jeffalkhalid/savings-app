@@ -11,15 +11,15 @@ export function ProjectionHero({
 }) {
   const mult = initial > 0 ? projected / initial : null;
   return (
-    <div className="border-b-2 border-ink pb-5 mb-5">
-      <div className="text-[10.5px] uppercase tracking-[0.14em] text-ink-muted mb-1.5">
+    <div className="bg-card rounded-[26px] p-6 mb-4">
+      <div className="text-[11px] uppercase tracking-[0.12em] text-ink-muted mb-2">
         Patrimoine projeté · {years} ans
       </div>
-      <div className="font-display text-emerald text-5xl leading-none">
+      <div className="font-display text-emerald text-4xl leading-none">
         {eur(projected)}
       </div>
       {mult !== null && (
-        <div className="font-mono-num text-sm mt-2 text-ink-muted">
+        <div className="font-mono-num text-sm mt-2 text-ink2">
           ×{mult.toFixed(1)} le patrimoine actuel
         </div>
       )}

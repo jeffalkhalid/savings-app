@@ -7,30 +7,17 @@ export function ProjectionModeToggle({
   mode: "deterministe" | "montecarlo";
   onMode: (m: "deterministe" | "montecarlo") => void;
 }) {
-  const base = "flex-1 text-center text-[12px] py-1.5 rounded-lg";
+  const opt = (active: boolean) =>
+    `flex-1 rounded-lg py-2 text-[13px] font-medium ${
+      active ? "bg-card text-ink" : "text-ink-muted"
+    }`;
   return (
-    <div className="flex gap-2 mb-5">
-      <button
-        type="button"
-        onClick={() => onMode("deterministe")}
-        className={`${base} ${
-          mode === "deterministe"
-            ? "bg-ink text-paper"
-            : "text-ink-muted border border-rule"
-        }`}
-      >
+    <div className="flex gap-1 bg-seg rounded-xl p-1 mb-5">
+      <button type="button" onClick={() => onMode("deterministe")} className={opt(mode === "deterministe")}>
         Déterministe
       </button>
-      <button
-        type="button"
-        onClick={() => onMode("montecarlo")}
-        className={`${base} ${
-          mode === "montecarlo"
-            ? "bg-ink text-paper"
-            : "text-ink-muted border border-rule"
-        }`}
-      >
-        Monte Carlo
+      <button type="button" onClick={() => onMode("montecarlo")} className={opt(mode === "montecarlo")}>
+        Monte-Carlo
       </button>
     </div>
   );
