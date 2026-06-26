@@ -8,6 +8,8 @@ export function AssetList({
   accounts,
   loading,
   error,
+  ratesEUR,
+  reporting,
   onSelect,
   onAdd,
 }: {
@@ -15,6 +17,8 @@ export function AssetList({
   accounts: Account[];
   loading: boolean;
   error: string | null;
+  ratesEUR: Record<string, number>;
+  reporting: string;
   onSelect: (a: Asset) => void;
   onAdd: () => void;
 }) {
@@ -40,6 +44,8 @@ export function AssetList({
           key={a.id}
           asset={a}
           accountName={nameOf(a.account_id)}
+          ratesEUR={ratesEUR}
+          reporting={reporting}
           onClick={() => onSelect(a)}
         />
       ))}

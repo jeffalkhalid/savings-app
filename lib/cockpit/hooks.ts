@@ -378,6 +378,30 @@ export function useGoalContributions() {
   return { contribByGoal, refetch };
 }
 
+export function useFxRates() {
+  const [ratesEUR, setRatesEUR] = useState<Record<string, number>>({ EUR: 1 });
+  const [date, setDate] = useState<string | null>(null);
+
+  const refetch = useCallback(() => {
+    fetch("https://api.frankfurter.app/latest?from=EUR")
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error("fx"))))
+      .then((j: { rates?: Record<string, number>; date?: string }) => {
+        setRatesEUR({ EUR: 1, ...(j.rates ?? {}) });
+        setDate(j.date ?? null);
+      })
+      .catch(() => {
+        setRatesEUR({ EUR: 1 });
+        setDate(null);
+      });
+  }, []);
+
+  useEffect(() => {
+    refetch();
+  }, [refetch]);
+
+  return { ratesEUR, date, refetch };
+}
+
 export function useAllocationTargets(userId: string) {
   const [targets, setTargets] = useState<Record<string, number>>({});
 

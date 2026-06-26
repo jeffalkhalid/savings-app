@@ -1,18 +1,24 @@
-import { eur } from "@/lib/cockpit/format";
 import { typeLabel } from "@/lib/cockpit/patrimoine";
 import { assetIcon } from "@/lib/cockpit/asset-icon";
+import { convert, money } from "@/lib/cockpit/fx";
 import type { Asset } from "@/lib/cockpit/patrimoine";
 
 export function AssetRow({
   asset,
   accountName,
+  ratesEUR,
+  reporting,
   onClick,
 }: {
   asset: Asset;
   accountName?: string;
+  ratesEUR: Record<string, number>;
+  reporting: string;
   onClick: () => void;
 }) {
   const Icon = assetIcon(asset.type);
+  const ccy = asset.currency ?? "EUR";
+  const converted = convert(Number(asset.current_value), ccy, reporting, ratesEUR);
   const sub = [typeLabel(asset.type), accountName].filter(Boolean).join(" · ");
   return (
     <button
@@ -27,9 +33,14 @@ export function AssetRow({
         <div className="text-sm truncate">{asset.name}</div>
         <div className="text-[11px] text-ink-muted mt-0.5">{sub}</div>
       </div>
-      <strong className="font-mono-num text-sm shrink-0">
-        {eur(Number(asset.current_value))}
-      </strong>
+      <div className="text-right shrink-0">
+        <strong className="font-mono-num text-sm">{money(converted, reporting)}</strong>
+        {ccy !== reporting && (
+          <div className="font-mono-num text-[11px] text-ink-muted mt-0.5">
+            {money(Number(asset.current_value), ccy)}
+          </div>
+        )}
+      </div>
     </button>
   );
 }
