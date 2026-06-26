@@ -44,6 +44,7 @@ import { dueCount, type Reminder } from "@/lib/cockpit/reminders";
 import { setReminderDone } from "@/lib/cockpit/reminders-api";
 import { RemindersModal } from "@/components/cockpit/RemindersModal";
 import { ReminderModal } from "@/components/cockpit/ReminderModal";
+import { BudgetsModal } from "@/components/cockpit/BudgetsModal";
 
 
 const monthLabelOf = (m: string) =>
@@ -76,12 +77,13 @@ export default function DashboardPage() {
   const [showTransfers, setShowTransfers] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showReminders, setShowReminders] = useState(false);
+  const [showBudgets, setShowBudgets] = useState(false);
   const [reminderForm, setReminderForm] = useState<Reminder | "new" | null>(null);
   const [transferError, setTransferError] = useState<string | null>(null);
   const [classifying, setClassifying] = useState(false);
 
   const { txns, refetch } = useTransactions(month);
-  const { categories } = useCategories();
+  const { categories, refetch: refetchCategories } = useCategories();
   const { accounts } = useAccounts();
   const { rows: monthlyByCat, error: catError } = useMonthlyByCategory(user.id);
   const { recurring } = useRecurring(user.id);
@@ -272,7 +274,12 @@ export default function DashboardPage() {
               Répartition indisponible — réessaie plus tard.
             </p>
           )}
-          <CategoryBreakdown insights={insights} onSelect={openCategory} />
+          <CategoryBreakdown
+            insights={insights}
+            categories={categories}
+            onSelect={openCategory}
+            onEditBudgets={() => setShowBudgets(true)}
+          />
         </>
       )}
 
@@ -339,6 +346,16 @@ export default function DashboardPage() {
           onSaved={() => {
             refetchReminders();
             setReminderForm(null);
+          }}
+        />
+      )}
+      {showBudgets && (
+        <BudgetsModal
+          categories={categories}
+          onClose={() => setShowBudgets(false)}
+          onSaved={() => {
+            refetchCategories();
+            setShowBudgets(false);
           }}
         />
       )}
