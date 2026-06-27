@@ -138,12 +138,13 @@ export default function ImportPage() {
       await createTransactionsBulk(user.id, importRows);
       const seen = new Set<string>();
       for (const r of rows.filter((x) => x.include && x.engagement && x.amount < 0)) {
-        const key = normalizePayee(r.label);
+        const payee = r.label || r.categoryName;
+        const key = normalizePayee(payee);
         if (!key || engagementKeys.has(key) || seen.has(key)) continue;
         seen.add(key);
         await createRecurringCharge(user.id, {
           payeeKey: key,
-          label: r.label,
+          label: payee,
           expectedAmount: Math.abs(r.amount),
         });
       }

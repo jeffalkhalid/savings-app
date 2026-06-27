@@ -59,7 +59,10 @@ export function ReviewTable({
             categories={categories}
             onCategory={(name) => onCategory(i, name)}
             onToggleInclude={(v) => onToggleInclude(i, v)}
-            engagementKnown={r.amount < 0 && isEngagement(r.label, engagementKeys)}
+            engagementKnown={
+              r.amount < 0 &&
+              isEngagement(r.label || r.categoryName, engagementKeys)
+            }
             engagement={!!r.engagement}
             onToggleEngagement={(v) => onToggleEngagement(i, v)}
           />
