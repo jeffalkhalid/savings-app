@@ -9,6 +9,8 @@ import {
 import { todayISO } from "@/lib/cockpit/format";
 import type { Category, Account, Txn } from "@/lib/cockpit/types";
 import type { Goal } from "@/lib/cockpit/goals";
+import { normalizePayee, isEngagement } from "@/lib/cockpit/recurring-detect";
+import { createRecurringCharge } from "@/lib/cockpit/recurring-charges-api";
 
 export function TxnModal({
   userId,
@@ -18,6 +20,7 @@ export function TxnModal({
   txn,
   onClose,
   onSaved,
+  engagementKeys,
 }: {
   userId: string;
   categories: Category[];
@@ -26,6 +29,7 @@ export function TxnModal({
   txn: Txn | null;
   onClose: () => void;
   onSaved: () => void;
+  engagementKeys: Set<string>;
 }) {
   const editing = !!txn;
   const [date, setDate] = useState(txn?.date ?? todayISO());
@@ -43,6 +47,7 @@ export function TxnModal({
       ""
   );
   const [goalId, setGoalId] = useState(txn?.goal_id ?? "");
+  const [engagement, setEngagement] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -65,6 +70,11 @@ export function TxnModal({
 
   const isSavings =
     categories.find((c) => c.id === categoryId)?.type === "savings";
+
+  const selCat = categories.find((c) => c.id === categoryId);
+  const isExpense = selCat?.type === "expense";
+  const payeeOf = description.trim() || selCat?.name || "";
+  const alreadyEngagement = isEngagement(payeeOf, engagementKeys);
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -93,6 +103,13 @@ export function TxnModal({
     try {
       if (editing && txn) await updateTransaction(txn.id, fields);
       else await createTransaction(userId, fields);
+      if (cat.type === "expense" && engagement && !alreadyEngagement) {
+        await createRecurringCharge(userId, {
+          payeeKey: normalizePayee(payeeOf),
+          label: payeeOf,
+          expectedAmount: amt,
+        });
+      }
       onSaved();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur");
@@ -190,6 +207,22 @@ export function TxnModal({
               </select>
             </label>
           )}
+          {isExpense &&
+            (alreadyEngagement ? (
+              <div className="text-[12px] text-emerald">
+                ✓ Déjà un engagement récurrent
+              </div>
+            ) : (
+              <label className="flex items-center gap-2 text-[13px] text-ink-muted">
+                <input
+                  type="checkbox"
+                  className="w-4 h-4 accent-emerald"
+                  checked={engagement}
+                  onChange={(e) => setEngagement(e.target.checked)}
+                />
+                Engagement récurrent
+              </label>
+            ))}
           <label className={labelCls}>
             Compte
             <select

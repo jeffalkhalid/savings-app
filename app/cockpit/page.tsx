@@ -95,6 +95,10 @@ export default function DashboardPage() {
   const { reminders, refetch: refetchReminders } = useReminders();
   const { goals } = useGoals();
 
+  const engagementKeys = useMemo(
+    () => new Set(charges.map((c) => c.payee_key)),
+    [charges]
+  );
   const metrics = useMemo(() => computeMetrics(txns), [txns]);
   const insights = useMemo(
     () => analyzeCategories(monthlyByCat, month, categories),
@@ -311,9 +315,11 @@ export default function DashboardPage() {
           accounts={accounts}
           goals={goals}
           txn={null}
+          engagementKeys={engagementKeys}
           onClose={() => setShowAdd(false)}
           onSaved={() => {
             refetch();
+            refetchCharges();
             setShowAdd(false);
           }}
         />
@@ -326,9 +332,11 @@ export default function DashboardPage() {
           accounts={accounts}
           goals={goals}
           txn={editTxn}
+          engagementKeys={engagementKeys}
           onClose={() => setEditTxn(null)}
           onSaved={() => {
             refetch();
+            refetchCharges();
             setEditTxn(null);
           }}
         />
