@@ -31,7 +31,7 @@ export function ValuationModal({
   const [error, setError] = useState("");
 
   const rows = [...valuations].sort((a, b) => (a.date < b.date ? 1 : -1));
-  const field = "border border-rule rounded-lg px-3 py-3 bg-white text-base w-full";
+  const field = "border border-rule rounded-lg px-3 py-3 bg-card text-ink text-base w-full";
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();

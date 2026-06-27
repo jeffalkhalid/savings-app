@@ -22,7 +22,7 @@ export function SimulatorControls({
       <label className={labelCls}>
         Versement volontaire annuel (€)
         <input
-          className="border border-rule rounded-lg px-3 py-3 bg-white text-base w-full"
+          className="border border-rule rounded-lg px-3 py-3 bg-card text-ink text-base w-full"
           type="text"
           inputMode="decimal"
           value={String(Math.round(volontaire))}

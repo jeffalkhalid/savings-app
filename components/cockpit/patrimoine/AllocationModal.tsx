@@ -24,7 +24,7 @@ export function AllocationModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  const field = "border border-rule rounded-lg px-3 py-2 bg-white text-base w-24 text-right";
+  const field = "border border-rule rounded-lg px-3 py-2 bg-card text-ink text-base w-24 text-right";
 
   const parsed: Record<string, number> = {};
   for (const t of ALLOCATION_TYPES) {

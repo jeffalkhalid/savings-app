@@ -97,7 +97,7 @@ export function EngagementsModal({
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
                     <input
-                      className="border border-rule rounded-lg px-2 py-1.5 bg-white text-sm w-20 text-right font-mono-num"
+                      className="border border-rule rounded-lg px-2 py-1.5 bg-card text-ink text-sm w-20 text-right font-mono-num"
                       type="text"
                       inputMode="decimal"
                       value={edits[c.id] ?? ""}

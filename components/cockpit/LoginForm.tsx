@@ -24,7 +24,7 @@ export function LoginForm() {
         }}
       >
         <input
-          className="border border-rule rounded-lg px-3 py-3 bg-white text-base"
+          className="border border-rule rounded-lg px-3 py-3 bg-card text-ink text-base"
           type="email"
           placeholder="Email"
           value={email}
@@ -32,7 +32,7 @@ export function LoginForm() {
           required
         />
         <input
-          className="border border-rule rounded-lg px-3 py-3 bg-white text-base"
+          className="border border-rule rounded-lg px-3 py-3 bg-card text-ink text-base"
           type="password"
           placeholder="Mot de passe"
           value={password}

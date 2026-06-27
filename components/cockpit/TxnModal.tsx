@@ -60,7 +60,7 @@ export function TxnModal({
     }
   }, [txn, accounts, accountId]);
 
-  const fieldCls = "border border-rule rounded-lg px-3 py-3 bg-white text-base w-full";
+  const fieldCls = "border border-rule rounded-lg px-3 py-3 bg-card text-ink text-base w-full";
   const labelCls = "grid gap-1.5 text-[13px] text-ink-muted";
 
   const isSavings =

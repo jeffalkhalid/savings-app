@@ -28,7 +28,7 @@ export function BudgetsModal({
   const [error, setError] = useState("");
 
   const field =
-    "border border-rule rounded-lg px-3 py-2 bg-white text-base w-28 text-right";
+    "border border-rule rounded-lg px-3 py-2 bg-card text-ink text-base w-28 text-right";
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();

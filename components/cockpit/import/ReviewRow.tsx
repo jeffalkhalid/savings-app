@@ -39,7 +39,7 @@ export function ReviewRow({
       </div>
       <div className="flex items-center gap-2 mt-1.5">
         <select
-          className={`border rounded-lg px-2 py-1.5 text-[13px] bg-white flex-1 ${
+          className={`border rounded-lg px-2 py-1.5 text-[13px] bg-card text-ink flex-1 ${
             resolved ? "border-rule" : "border-strat-a"
           }`}
           value={row.categoryName}

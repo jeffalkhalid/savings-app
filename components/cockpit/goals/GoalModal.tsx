@@ -24,7 +24,7 @@ export function GoalModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  const field = "border border-rule rounded-lg px-3 py-3 bg-white text-base w-full";
+  const field = "border border-rule rounded-lg px-3 py-3 bg-card text-ink text-base w-full";
   const labelCls = "grid gap-1.5 text-[13px] text-ink-muted";
 
   const submit = async (e: React.FormEvent) => {

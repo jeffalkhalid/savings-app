@@ -35,7 +35,7 @@ export function ReviewTable({
       <label className="grid gap-1.5 text-[13px] text-ink-muted mb-4">
         Compte cible
         <select
-          className="border border-rule rounded-lg px-3 py-3 bg-white text-base w-full"
+          className="border border-rule rounded-lg px-3 py-3 bg-card text-ink text-base w-full"
           value={accountId}
           onChange={(e) => onAccount(e.target.value)}
         >

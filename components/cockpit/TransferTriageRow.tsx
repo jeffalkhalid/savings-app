@@ -27,7 +27,7 @@ export function TransferTriageRow({
         </strong>
       </div>
       <select
-        className="border border-rule rounded-lg px-2 py-1.5 text-[13px] bg-white w-full mt-1.5"
+        className="border border-rule rounded-lg px-2 py-1.5 text-[13px] bg-card text-ink w-full mt-1.5"
         value={txn.category_id ?? ""}
         onChange={(e) => onReclassify(txn, e.target.value)}
       >
