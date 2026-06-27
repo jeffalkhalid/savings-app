@@ -7,11 +7,17 @@ export function ReviewRow({
   categories,
   onCategory,
   onToggleInclude,
+  engagementKnown,
+  engagement,
+  onToggleEngagement,
 }: {
   row: ReviewRowData & { include: boolean };
   categories: Category[];
   onCategory: (name: string) => void;
   onToggleInclude: (v: boolean) => void;
+  engagementKnown: boolean;
+  engagement: boolean;
+  onToggleEngagement: (v: boolean) => void;
 }) {
   const neg = row.amount < 0;
   const resolved = categories.some((c) => c.name === row.categoryName);
@@ -54,6 +60,20 @@ export function ReviewRow({
             </option>
           ))}
         </select>
+        {neg &&
+          (engagementKnown ? (
+            <span className="text-[11px] text-emerald shrink-0">engagement</span>
+          ) : (
+            <label className="text-[11px] text-ink-muted flex items-center gap-1 shrink-0">
+              <input
+                type="checkbox"
+                className="accent-emerald"
+                checked={engagement}
+                onChange={(e) => onToggleEngagement(e.target.checked)}
+              />
+              engagement
+            </label>
+          ))}
         {row.duplicate && (
           <label className="text-[11px] text-ink-muted flex items-center gap-1 shrink-0">
             <input

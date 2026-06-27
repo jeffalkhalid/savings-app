@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import * as XLSX from "xlsx";
-import { useAuth, useCategories, useAccounts } from "@/lib/cockpit/hooks";
+import { useAuth, useCategories, useAccounts, useRecurringCharges } from "@/lib/cockpit/hooks";
 import { supabase } from "@/lib/cockpit/supabase";
 import {
   parseBnpSheet,
@@ -19,12 +19,14 @@ import {
   classifyTransfer,
   targetCategoryName,
 } from "@/lib/cockpit/classify-transfer";
+import { createRecurringCharge } from "@/lib/cockpit/recurring-charges-api";
+import { normalizePayee } from "@/lib/cockpit/recurring-detect";
 import { ensureTransferCategories } from "@/lib/cockpit/transfers-api";
 import type { Category } from "@/lib/cockpit/types";
 import { ImportDropzone } from "@/components/cockpit/import/ImportDropzone";
 import { ReviewTable } from "@/components/cockpit/import/ReviewTable";
 
-type Row = ReviewRowData & { include: boolean };
+type Row = ReviewRowData & { include: boolean; engagement?: boolean };
 
 export default function ImportPage() {
   const user = useAuth();
@@ -39,6 +41,11 @@ export default function ImportPage() {
       .catch(() => setCategories(liveCategories));
   }, [liveCategories, user.id]);
   const { accounts } = useAccounts();
+  const { charges } = useRecurringCharges();
+  const engagementKeys = useMemo(
+    () => new Set(charges.map((c) => c.payee_key)),
+    [charges]
+  );
   const [rows, setRows] = useState<Row[] | null>(null);
   const [accountId, setAccountId] = useState("");
   const [error, setError] = useState("");
@@ -102,6 +109,10 @@ export default function ImportPage() {
     setRows((rs) =>
       rs ? rs.map((r, idx) => (idx === i ? { ...r, include: v } : r)) : rs
     );
+  const setEngagement = (i: number, v: boolean) =>
+    setRows((rs) =>
+      rs ? rs.map((r, idx) => (idx === i ? { ...r, engagement: v } : r)) : rs
+    );
 
   const doImport = async () => {
     if (!rows) return;
@@ -125,6 +136,17 @@ export default function ImportPage() {
     setImporting(true);
     try {
       await createTransactionsBulk(user.id, importRows);
+      const seen = new Set<string>();
+      for (const r of rows.filter((x) => x.include && x.engagement && x.amount < 0)) {
+        const key = normalizePayee(r.label);
+        if (!key || engagementKeys.has(key) || seen.has(key)) continue;
+        seen.add(key);
+        await createRecurringCharge(user.id, {
+          payeeKey: key,
+          label: r.label,
+          expectedAmount: Math.abs(r.amount),
+        });
+      }
       router.push("/cockpit");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur");
@@ -163,6 +185,8 @@ export default function ImportPage() {
           onToggleInclude={setInclude}
           onImport={doImport}
           importing={importing}
+          engagementKeys={engagementKeys}
+          onToggleEngagement={setEngagement}
         />
       )}
     </main>

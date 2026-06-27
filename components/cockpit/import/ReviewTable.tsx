@@ -1,8 +1,9 @@
 import type { Category, Account } from "@/lib/cockpit/types";
 import type { ReviewRow as ReviewRowData } from "@/lib/cockpit/bnp-import";
 import { ReviewRow } from "./ReviewRow";
+import { isEngagement } from "@/lib/cockpit/recurring-detect";
 
-type Row = ReviewRowData & { include: boolean };
+type Row = ReviewRowData & { include: boolean; engagement?: boolean };
 
 export function ReviewTable({
   rows,
@@ -14,6 +15,8 @@ export function ReviewTable({
   onToggleInclude,
   onImport,
   importing,
+  engagementKeys,
+  onToggleEngagement,
 }: {
   rows: Row[];
   categories: Category[];
@@ -24,6 +27,8 @@ export function ReviewTable({
   onToggleInclude: (index: number, v: boolean) => void;
   onImport: () => void;
   importing: boolean;
+  engagementKeys: Set<string>;
+  onToggleEngagement: (index: number, v: boolean) => void;
 }) {
   const toImport = rows.filter((r) => r.include).length;
   const dupes = rows.filter((r) => r.duplicate).length;
@@ -54,6 +59,9 @@ export function ReviewTable({
             categories={categories}
             onCategory={(name) => onCategory(i, name)}
             onToggleInclude={(v) => onToggleInclude(i, v)}
+            engagementKnown={r.amount < 0 && isEngagement(r.label, engagementKeys)}
+            engagement={!!r.engagement}
+            onToggleEngagement={(v) => onToggleEngagement(i, v)}
           />
         ))}
       </div>
