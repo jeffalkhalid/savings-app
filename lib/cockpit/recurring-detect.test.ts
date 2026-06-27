@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { normalizePayee, detectRecurring } from "./recurring-detect";
+import { normalizePayee, detectRecurring, isEngagement } from "./recurring-detect";
 import type { Txn } from "./types";
 
 const t = (over: Partial<Txn>): Txn => ({
@@ -48,5 +48,14 @@ describe("detectRecurring", () => {
       t({ date: "2025-03-03", amount: -800, description: "LOYER" }),
     ];
     expect(detectRecurring(txns, month)).toHaveLength(0);
+  });
+});
+
+describe("isEngagement", () => {
+  const keys = new Set(["netflix", "prlv loyer"]);
+  it("matches a known payee, ignoring digits/case", () => {
+    expect(isEngagement("NETFLIX 0612", keys)).toBe(true);
+    expect(isEngagement("PRLV LOYER 0703", keys)).toBe(true);
+    expect(isEngagement("Carrefour", keys)).toBe(false);
   });
 });

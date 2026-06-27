@@ -73,3 +73,7 @@ export function detectRecurring(
   }
   return out.sort((a, b) => b.expected - a.expected);
 }
+
+export function isEngagement(description: string, keys: Set<string>): boolean {
+  return keys.has(normalizePayee(description));
+}
