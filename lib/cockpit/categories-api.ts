@@ -36,7 +36,7 @@ export async function setCategoryFixed(
 }
 
 export async function createCategory(
-  userId: string,
+  userId: string | null,
   input: { name: string; type: CatType; color: string }
 ): Promise<void> {
   const { error } = await supabase.from("categories").insert({

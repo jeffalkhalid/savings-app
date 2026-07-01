@@ -18,5 +18,6 @@ export type Category = {
   color: string;
   is_fixed?: boolean;
   active?: boolean;
+  user_id?: string | null;
 };
 export type Account = { id: string; name: string };

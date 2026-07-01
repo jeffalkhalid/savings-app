@@ -86,7 +86,7 @@ export function useCategories() {
   const refetch = useCallback(() => {
     supabase
       .from("categories")
-      .select("id,name,type,color,is_fixed,active")
+      .select("id,name,type,color,is_fixed,active,user_id")
       .order("name")
       .then(({ data }) => setCategories((data as Category[]) ?? []));
   }, []);
@@ -94,6 +94,17 @@ export function useCategories() {
     refetch();
   }, [refetch]);
   return { categories, refetch };
+}
+
+export function useIsAdmin() {
+  const [isAdmin, setIsAdmin] = useState(false);
+  useEffect(() => {
+    supabase
+      .from("admins")
+      .select("user_id")
+      .then(({ data }) => setIsAdmin(((data as unknown[]) ?? []).length > 0));
+  }, []);
+  return { isAdmin };
 }
 
 export function useCategoryBudgets() {
