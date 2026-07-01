@@ -4,11 +4,13 @@ import { useState } from "react";
 import { Archive, RotateCcw, Plus, ChevronDown, ChevronUp } from "lucide-react";
 import type { Category } from "@/lib/cockpit/types";
 import { categoryIcon } from "@/lib/cockpit/category-icon";
+import { useIsAdmin } from "@/lib/cockpit/hooks";
 import {
   CATEGORY_COLORS,
   CAT_TYPE_LABELS,
   CAT_TYPE_ORDER,
   categoryNameError,
+  splitCategories,
   type CatType,
 } from "@/lib/cockpit/category-admin";
 import {
@@ -28,6 +30,7 @@ export function CategoriesModal({
   onChanged: () => void;
   onClose: () => void;
 }) {
+  const { isAdmin } = useIsAdmin();
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
@@ -35,10 +38,16 @@ export function CategoriesModal({
   const [newName, setNewName] = useState("");
   const [newType, setNewType] = useState<CatType>("expense");
   const [newColor, setNewColor] = useState(CATEGORY_COLORS[0]);
+  const [newScope, setNewScope] = useState<"common" | "perso">("common");
 
-  const active = categories.filter((c) => c.active !== false);
-  const archived = categories.filter((c) => c.active === false);
-  const activeNames = active.map((c) => c.name);
+  const { common, mine } = splitCategories(categories, userId);
+  const commonActive = common.filter((c) => c.active !== false);
+  const mineActive = mine.filter((c) => c.active !== false);
+  const activeNames = [...commonActive, ...mineActive].map((c) => c.name);
+  const archived = [
+    ...mine.filter((c) => c.active === false),
+    ...(isAdmin ? common.filter((c) => c.active === false) : []),
+  ];
 
   const run = async (fn: () => Promise<void>): Promise<boolean> => {
     setError("");
@@ -80,8 +89,9 @@ export function CategoriesModal({
       setError(err);
       return;
     }
+    const owner = isAdmin && newScope === "common" ? null : userId;
     const ok = await run(() =>
-      createCategory(userId, {
+      createCategory(owner, {
         name: newName.trim(),
         type: newType,
         color: newColor,
@@ -104,6 +114,93 @@ export function CategoriesModal({
     />
   );
 
+  const editableRow = (c: Category) => {
+    const Icon = categoryIcon(c.name);
+    return (
+      <div key={c.id}>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setColorFor(colorFor === c.id ? null : c.id)}
+            className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+            style={{ backgroundColor: c.color + "22" }}
+            aria-label="Couleur"
+          >
+            <Icon size={16} style={{ color: c.color }} />
+          </button>
+          <input
+            defaultValue={c.name}
+            disabled={busy}
+            className="flex-1 bg-transparent text-ink text-sm border-b border-transparent focus:border-rule outline-none py-1"
+            onBlur={(e) => rename(c, e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") e.currentTarget.blur();
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => run(() => setCategoryActive(c.id, false))}
+            disabled={busy}
+            className="text-ink-muted p-1.5"
+            aria-label="Archiver"
+          >
+            <Archive size={16} />
+          </button>
+        </div>
+        {colorFor === c.id && (
+          <div className="flex flex-wrap gap-1.5 pl-10 pb-1 pt-1">
+            {CATEGORY_COLORS.map((col) =>
+              swatch(
+                col,
+                c.color.toLowerCase() === col.toLowerCase(),
+                () => recolor(c, col)
+              )
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const readonlyRow = (c: Category) => {
+    const Icon = categoryIcon(c.name);
+    return (
+      <div key={c.id} className="flex items-center gap-2">
+        <div
+          className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+          style={{ backgroundColor: c.color + "22" }}
+        >
+          <Icon size={16} style={{ color: c.color }} />
+        </div>
+        <span className="flex-1 text-ink text-sm">{c.name}</span>
+        <span className="text-[11px] text-ink-muted">commune</span>
+      </div>
+    );
+  };
+
+  const renderBlock = (title: string, rows: Category[], editable: boolean) => {
+    if (!rows.length) return null;
+    return (
+      <div className="mb-5">
+        <h3 className="font-display text-[15px] mb-2">{title}</h3>
+        {CAT_TYPE_ORDER.map((t) => {
+          const list = rows.filter((c) => c.type === t);
+          if (!list.length) return null;
+          return (
+            <section key={t} className="mb-3">
+              <h4 className="text-xs uppercase tracking-[0.1em] text-ink-muted mb-2">
+                {CAT_TYPE_LABELS[t]}
+              </h4>
+              <div className="grid gap-1.5">
+                {list.map((c) => (editable ? editableRow(c) : readonlyRow(c)))}
+              </div>
+            </section>
+          );
+        })}
+      </div>
+    );
+  };
+
   return (
     <div
       className="fixed inset-0 z-[1001] bg-black/50 flex items-end justify-center"
@@ -120,68 +217,8 @@ export function CategoriesModal({
           </button>
         </header>
 
-        {CAT_TYPE_ORDER.map((t) => {
-          const rows = active.filter((c) => c.type === t);
-          if (!rows.length) return null;
-          return (
-            <section key={t} className="mb-4">
-              <h3 className="text-xs uppercase tracking-[0.1em] text-ink-muted mb-2">
-                {CAT_TYPE_LABELS[t]}
-              </h3>
-              <div className="grid gap-1.5">
-                {rows.map((c) => {
-                  const Icon = categoryIcon(c.name);
-                  return (
-                    <div key={c.id}>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setColorFor(colorFor === c.id ? null : c.id)
-                          }
-                          className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                          style={{ backgroundColor: c.color + "22" }}
-                          aria-label="Couleur"
-                        >
-                          <Icon size={16} style={{ color: c.color }} />
-                        </button>
-                        <input
-                          defaultValue={c.name}
-                          disabled={busy}
-                          className="flex-1 bg-transparent text-ink text-sm border-b border-transparent focus:border-rule outline-none py-1"
-                          onBlur={(e) => rename(c, e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") e.currentTarget.blur();
-                          }}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => run(() => setCategoryActive(c.id, false))}
-                          disabled={busy}
-                          className="text-ink-muted p-1.5"
-                          aria-label="Archiver"
-                        >
-                          <Archive size={16} />
-                        </button>
-                      </div>
-                      {colorFor === c.id && (
-                        <div className="flex flex-wrap gap-1.5 pl-10 pb-1 pt-1">
-                          {CATEGORY_COLORS.map((col) =>
-                            swatch(
-                              col,
-                              c.color.toLowerCase() === col.toLowerCase(),
-                              () => recolor(c, col)
-                            )
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-          );
-        })}
+        {renderBlock("Communes", commonActive, isAdmin)}
+        {renderBlock("Mes catégories", mineActive, true)}
 
         {archived.length > 0 && (
           <section className="mb-4">
@@ -205,7 +242,10 @@ export function CategoriesModal({
                       >
                         <Icon size={16} style={{ color: c.color }} />
                       </div>
-                      <span className="flex-1 text-sm text-ink-muted">{c.name}</span>
+                      <span className="flex-1 text-sm text-ink-muted">
+                        {c.name}
+                        {c.user_id == null ? " · commune" : ""}
+                      </span>
                       <button
                         type="button"
                         onClick={() => run(() => setCategoryActive(c.id, true))}
@@ -228,6 +268,22 @@ export function CategoriesModal({
             Ajouter
           </h3>
           <div className="grid gap-2">
+            {isAdmin && (
+              <div className="flex gap-1 bg-seg rounded-xl p-1">
+                {(["common", "perso"] as const).map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setNewScope(s)}
+                    className={`flex-1 rounded-lg py-2 text-[13px] font-medium ${
+                      newScope === s ? "bg-card text-ink" : "text-ink-muted"
+                    }`}
+                  >
+                    {s === "common" ? "Commune" : "Perso"}
+                  </button>
+                ))}
+              </div>
+            )}
             <input
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
