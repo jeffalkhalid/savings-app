@@ -21,7 +21,7 @@ declare
   v_id uuid;
 begin
   if not public.is_admin() then raise exception 'Réservé aux admins'; end if;
-  select id into v_id from auth.users where email = lower(trim(p_email));
+  select id into v_id from auth.users where lower(email) = lower(trim(p_email));
   if v_id is null then raise exception 'Aucun utilisateur avec cet email'; end if;
   insert into public.admins (user_id) values (v_id) on conflict do nothing;
 end;
