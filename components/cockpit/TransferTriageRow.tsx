@@ -11,6 +11,9 @@ export function TransferTriageRow({
   onReclassify: (txn: Txn, categoryId: string) => void;
 }) {
   const neg = Number(txn.amount) < 0;
+  const pickCategories = categories.filter(
+    (c) => c.active !== false || c.id === txn.category_id
+  );
   return (
     <div className="py-2.5 border-b border-rule">
       <div className="flex justify-between items-center gap-2">
@@ -31,7 +34,7 @@ export function TransferTriageRow({
         value={txn.category_id ?? ""}
         onChange={(e) => onReclassify(txn, e.target.value)}
       >
-        {categories.map((c) => (
+        {pickCategories.map((c) => (
           <option key={c.id} value={c.id}>
             {c.name} ({c.type})
           </option>

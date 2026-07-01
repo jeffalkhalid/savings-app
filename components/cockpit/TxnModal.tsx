@@ -253,7 +253,7 @@ export function TxnModal({
             />
           </label>
           <button
-            className="bg-emerald text-paper rounded-lg py-3.5 font-semibold disabled:opacity-60"
+            className="bg-emerald text-[#FBF3EC] rounded-lg py-3.5 font-semibold disabled:opacity-60"
             type="submit"
             disabled={saving}
           >
