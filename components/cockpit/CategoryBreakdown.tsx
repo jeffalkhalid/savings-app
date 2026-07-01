@@ -1,21 +1,19 @@
 import type { CategoryInsight } from "@/lib/cockpit/categories-analysis";
-import type { Category } from "@/lib/cockpit/types";
 import { categoryIcon } from "@/lib/cockpit/category-icon";
 import { CategoryRow } from "./CategoryRow";
 
 export function CategoryBreakdown({
   insights,
-  categories,
+  budgets,
   onSelect,
   onEditBudgets,
 }: {
   insights: CategoryInsight[];
-  categories: Category[];
+  budgets: Record<string, number>;
   onSelect: (categoryId: string) => void;
   onEditBudgets: () => void;
 }) {
-  const budgetOf = (id: string) =>
-    categories.find((c) => c.id === id)?.monthly_budget ?? null;
+  const budgetOf = (id: string) => budgets[id] ?? null;
   return (
     <section>
       <div className="flex justify-between items-baseline mb-1">

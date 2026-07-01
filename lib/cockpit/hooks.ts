@@ -12,6 +12,7 @@ import { monthRange } from "./format";
 import type { Txn, Category, Account } from "./types";
 import type { Asset, AssetValuation, PatrimoineLine } from "./patrimoine";
 import type { Goal } from "./goals";
+import { budgetsToMap, type BudgetRow } from "./budgets";
 import { getUserSettings } from "./user-settings-api";
 import { getAllocationTargets } from "./allocation-api";
 import { coerceSettings, DEFAULT_SETTINGS, type UserSettings } from "./settings";
@@ -85,7 +86,7 @@ export function useCategories() {
   const refetch = useCallback(() => {
     supabase
       .from("categories")
-      .select("id,name,type,color,monthly_budget,is_fixed,active")
+      .select("id,name,type,color,is_fixed,active")
       .order("name")
       .then(({ data }) => setCategories((data as Category[]) ?? []));
   }, []);
@@ -93,6 +94,20 @@ export function useCategories() {
     refetch();
   }, [refetch]);
   return { categories, refetch };
+}
+
+export function useCategoryBudgets() {
+  const [budgets, setBudgets] = useState<Record<string, number>>({});
+  const refetch = useCallback(() => {
+    supabase
+      .from("category_budgets")
+      .select("category_id,monthly_budget")
+      .then(({ data }) => setBudgets(budgetsToMap((data as BudgetRow[]) ?? [])));
+  }, []);
+  useEffect(() => {
+    refetch();
+  }, [refetch]);
+  return { budgets, refetch };
 }
 
 export function useAccounts() {

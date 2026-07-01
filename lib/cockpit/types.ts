@@ -16,7 +16,6 @@ export type Category = {
   name: string;
   type: string;
   color: string;
-  monthly_budget?: number | null;
   is_fixed?: boolean;
   active?: boolean;
 };

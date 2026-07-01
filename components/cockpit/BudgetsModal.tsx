@@ -8,10 +8,14 @@ export function BudgetsModal({
   categories,
   onClose,
   onSaved,
+  userId,
+  budgets,
 }: {
   categories: Category[];
   onClose: () => void;
   onSaved: () => void;
+  userId: string;
+  budgets: Record<string, number>;
 }) {
   const expense = categories
     .filter((c) => c.type === "expense" && c.active !== false)
@@ -20,7 +24,7 @@ export function BudgetsModal({
     Object.fromEntries(
       expense.map((c) => [
         c.id,
-        c.monthly_budget != null ? String(c.monthly_budget) : "",
+        budgets[c.id] != null ? String(budgets[c.id]) : "",
       ])
     )
   );
@@ -43,8 +47,8 @@ export function BudgetsModal({
           setSaving(false);
           return;
         }
-        const prev = c.monthly_budget != null ? Number(c.monthly_budget) : null;
-        if (next !== prev) await setCategoryBudget(c.id, next);
+        const prev = budgets[c.id] ?? null;
+        if (next !== prev) await setCategoryBudget(userId, c.id, next);
       }
       onSaved();
     } catch (err) {

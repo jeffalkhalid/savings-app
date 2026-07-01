@@ -13,6 +13,7 @@ import {
   useGoals,
   useAllTransactions,
   useRecurringCharges,
+  useCategoryBudgets,
 } from "@/lib/cockpit/hooks";
 import { computeMetrics } from "@/lib/cockpit/metrics";
 import { analyzeCategories } from "@/lib/cockpit/categories-analysis";
@@ -87,6 +88,7 @@ export default function DashboardPage() {
 
   const { txns, refetch } = useTransactions(month);
   const { categories, refetch: refetchCategories } = useCategories();
+  const { budgets, refetch: refetchBudgets } = useCategoryBudgets();
   const { charges, refetch: refetchCharges } = useRecurringCharges();
   const { txns: allTxns } = useAllTransactions();
   const { accounts } = useAccounts();
@@ -299,7 +301,7 @@ export default function DashboardPage() {
           )}
           <CategoryBreakdown
             insights={insights}
-            categories={categories}
+            budgets={budgets}
             onSelect={openCategory}
             onEditBudgets={() => setShowBudgets(true)}
           />
@@ -383,9 +385,11 @@ export default function DashboardPage() {
       {showBudgets && (
         <BudgetsModal
           categories={categories}
+          userId={user.id}
+          budgets={budgets}
           onClose={() => setShowBudgets(false)}
           onSaved={() => {
-            refetchCategories();
+            refetchBudgets();
             setShowBudgets(false);
           }}
         />

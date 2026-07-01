@@ -2,13 +2,25 @@ import { supabase } from "./supabase";
 import type { CatType } from "./category-admin";
 
 export async function setCategoryBudget(
-  id: string,
+  userId: string,
+  categoryId: string,
   budget: number | null
 ): Promise<void> {
+  if (budget === null) {
+    const { error } = await supabase
+      .from("category_budgets")
+      .delete()
+      .eq("user_id", userId)
+      .eq("category_id", categoryId);
+    if (error) throw new Error(error.message);
+    return;
+  }
   const { error } = await supabase
-    .from("categories")
-    .update({ monthly_budget: budget })
-    .eq("id", id);
+    .from("category_budgets")
+    .upsert(
+      { user_id: userId, category_id: categoryId, monthly_budget: budget },
+      { onConflict: "user_id,category_id" }
+    );
   if (error) throw new Error(error.message);
 }
 
