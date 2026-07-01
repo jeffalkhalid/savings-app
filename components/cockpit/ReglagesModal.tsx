@@ -8,6 +8,8 @@ import { supabase } from "@/lib/cockpit/supabase";
 import type { ThemePref } from "@/lib/cockpit/theme";
 import type { Category } from "@/lib/cockpit/types";
 import { CategoriesModal } from "@/components/cockpit/CategoriesModal";
+import { useIsAdmin } from "@/lib/cockpit/hooks";
+import { AdminsModal } from "@/components/cockpit/AdminsModal";
 
 const THEME_OPTS: { v: ThemePref; label: string }[] = [
   { v: "light", label: "Clair" },
@@ -38,6 +40,8 @@ export function ReglagesModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [showCategories, setShowCategories] = useState(false);
+  const { isAdmin } = useIsAdmin();
+  const [showAdmins, setShowAdmins] = useState(false);
 
   const field = "border border-rule rounded-lg px-3 py-3 bg-card text-ink text-base w-full";
   const labelCls = "grid gap-1.5 text-[13px] text-ink-muted";
@@ -140,6 +144,15 @@ export function ReglagesModal({
           >
             Gérer les catégories
           </button>
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={() => setShowAdmins(true)}
+              className="text-ink text-sm py-2 text-left"
+            >
+              Gérer les admins
+            </button>
+          )}
           <button
             type="button"
             onClick={() => supabase.auth.signOut()}
@@ -157,6 +170,9 @@ export function ReglagesModal({
         onChanged={onCategoriesChanged}
         onClose={() => setShowCategories(false)}
       />
+    )}
+    {showAdmins && (
+      <AdminsModal userId={userId} onClose={() => setShowAdmins(false)} />
     )}
     </>
   );
