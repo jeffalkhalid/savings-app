@@ -15,6 +15,7 @@ create or replace function public.is_admin() returns boolean
 language sql security definer stable set search_path = public as $$
   select exists (select 1 from public.admins where user_id = auth.uid());
 $$;
+grant execute on function public.is_admin() to authenticated;
 
 -- 4. RLS catégories : voir communes + les siennes ; écrire les siennes, ou communes si admin
 alter table public.categories enable row level security;
