@@ -18,5 +18,6 @@ export type Category = {
   color: string;
   monthly_budget?: number | null;
   is_fixed?: boolean;
+  active?: boolean;
 };
 export type Account = { id: string; name: string };
