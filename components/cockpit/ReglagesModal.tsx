@@ -6,6 +6,8 @@ import { CURRENCIES, type UserSettings } from "@/lib/cockpit/settings";
 import { useTheme } from "@/components/cockpit/ThemeProvider";
 import { supabase } from "@/lib/cockpit/supabase";
 import type { ThemePref } from "@/lib/cockpit/theme";
+import type { Category } from "@/lib/cockpit/types";
+import { CategoriesModal } from "@/components/cockpit/CategoriesModal";
 
 const THEME_OPTS: { v: ThemePref; label: string }[] = [
   { v: "light", label: "Clair" },
@@ -16,13 +18,17 @@ const THEME_OPTS: { v: ThemePref; label: string }[] = [
 export function ReglagesModal({
   userId,
   settings,
+  categories,
   onClose,
   onSaved,
+  onCategoriesChanged,
 }: {
   userId: string;
   settings: UserSettings;
+  categories: Category[];
   onClose: () => void;
   onSaved: () => void;
+  onCategoriesChanged: () => void;
 }) {
   const { pref, setPref } = useTheme();
   const [goalPct, setGoalPct] = useState(
@@ -31,6 +37,7 @@ export function ReglagesModal({
   const [currency, setCurrency] = useState(settings.reporting_currency);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [showCategories, setShowCategories] = useState(false);
 
   const field = "border border-rule rounded-lg px-3 py-3 bg-card text-ink text-base w-full";
   const labelCls = "grid gap-1.5 text-[13px] text-ink-muted";
@@ -57,6 +64,7 @@ export function ReglagesModal({
   };
 
   return (
+    <>
     <div
       className="fixed inset-0 z-[1000] bg-black/50 flex items-end justify-center"
       onClick={onClose}
@@ -127,6 +135,13 @@ export function ReglagesModal({
           {error && <p className="text-accent text-sm">{error}</p>}
           <button
             type="button"
+            onClick={() => setShowCategories(true)}
+            className="text-ink text-sm py-2 border-t border-rule pt-4 text-left"
+          >
+            Gérer les catégories
+          </button>
+          <button
+            type="button"
             onClick={() => supabase.auth.signOut()}
             className="text-accent text-sm py-2 mt-2 border-t border-rule pt-4"
           >
@@ -135,5 +150,14 @@ export function ReglagesModal({
         </form>
       </div>
     </div>
+    {showCategories && (
+      <CategoriesModal
+        userId={userId}
+        categories={categories}
+        onChanged={onCategoriesChanged}
+        onClose={() => setShowCategories(false)}
+      />
+    )}
+    </>
   );
 }

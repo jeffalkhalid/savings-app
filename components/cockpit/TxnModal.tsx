@@ -68,6 +68,10 @@ export function TxnModal({
   const fieldCls = "border border-rule rounded-lg px-3 py-3 bg-card text-ink text-base w-full";
   const labelCls = "grid gap-1.5 text-[13px] text-ink-muted";
 
+  const pickCategories = categories.filter(
+    (c) => c.active !== false || c.id === txn?.category_id
+  );
+
   const isSavings =
     categories.find((c) => c.id === categoryId)?.type === "savings";
 
@@ -183,7 +187,7 @@ export function TxnModal({
               onChange={(e) => setCategoryId(e.target.value)}
               required
             >
-              {categories.map((c) => (
+              {pickCategories.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name} ({c.type})
                 </option>

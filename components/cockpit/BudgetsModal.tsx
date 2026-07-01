@@ -14,7 +14,7 @@ export function BudgetsModal({
   onSaved: () => void;
 }) {
   const expense = categories
-    .filter((c) => c.type === "expense")
+    .filter((c) => c.type === "expense" && c.active !== false)
     .sort((a, b) => a.name.localeCompare(b.name));
   const [values, setValues] = useState<Record<string, string>>(
     Object.fromEntries(

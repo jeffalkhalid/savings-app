@@ -346,6 +346,8 @@ export default function DashboardPage() {
         <ReglagesModal
           userId={user.id}
           settings={settings}
+          categories={categories}
+          onCategoriesChanged={refetchCategories}
           onClose={() => setShowSettings(false)}
           onSaved={() => {
             refetchSettings();

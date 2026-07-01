@@ -178,7 +178,7 @@ export default function ImportPage() {
       {rows && (
         <ReviewTable
           rows={rows}
-          categories={categories}
+          categories={categories.filter((c) => c.active !== false)}
           accounts={accounts}
           accountId={accountId}
           onAccount={setAccountId}
