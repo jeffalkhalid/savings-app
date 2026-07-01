@@ -15,6 +15,7 @@ import {
   PiggyBank,
   TrendingUp,
   CreditCard,
+  Gift,
   type LucideIcon,
 } from "lucide-react";
 
@@ -38,6 +39,8 @@ const RULES: { kw: string; icon: LucideIcon }[] = [
   { kw: "sante", icon: HeartPulse },
   { kw: "loisir", icon: Clapperboard },
   { kw: "vetement", icon: Shirt },
+  { kw: "cadeau", icon: Gift },
+  { kw: "famille", icon: Gift },
   { kw: "banc", icon: Landmark },
   { kw: "virement", icon: ArrowLeftRight },
   { kw: "epargne", icon: PiggyBank },

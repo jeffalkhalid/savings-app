@@ -1,12 +1,13 @@
 import { describe, it, expect } from "vitest";
 import { categoryIcon } from "./category-icon";
-import { ShoppingCart, TrendingUp, Home, Zap, CreditCard } from "lucide-react";
+import { ShoppingCart, TrendingUp, Home, Zap, CreditCard, Gift } from "lucide-react";
 
 describe("categoryIcon", () => {
   it("maps known categories to lucide icons", () => {
     expect(categoryIcon("Courses alimentaires")).toBe(ShoppingCart);
     expect(categoryIcon("Bourse / Natixis")).toBe(TrendingUp);
     expect(categoryIcon("Logement")).toBe(Home);
+    expect(categoryIcon("Famille et cadeaux")).toBe(Gift);
   });
   it("is case- and accent-insensitive", () => {
     expect(categoryIcon("ÉNERGIE")).toBe(Zap);
