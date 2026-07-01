@@ -46,3 +46,14 @@ export function categoryNameError(
   if (existingNames.some((e) => norm(e) === n)) return "Ce nom existe déjà";
   return null;
 }
+
+export function splitCategories<T extends { user_id?: string | null }>(
+  categories: T[],
+  myUserId: string
+): { common: T[]; mine: T[] } {
+  const common = categories.filter((c) => c.user_id == null);
+  const mine = categories.filter(
+    (c) => c.user_id != null && c.user_id === myUserId
+  );
+  return { common, mine };
+}
