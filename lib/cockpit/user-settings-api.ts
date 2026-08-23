@@ -1,16 +1,17 @@
 import { supabase } from "./supabase";
-import type { UserSettings } from "./settings";
+import type { UserSettingsRow } from "./settings";
+import type { AbondementBareme } from "@/lib/abondement";
 
 export async function getUserSettings(
   userId: string
-): Promise<UserSettings | null> {
+): Promise<UserSettingsRow | null> {
   const { data, error } = await supabase
     .from("user_settings")
-    .select("savings_rate_goal,reporting_currency")
+    .select("savings_rate_goal,reporting_currency,abondement_bareme")
     .eq("user_id", userId)
     .maybeSingle();
   if (error) throw new Error(error.message);
-  return (data as UserSettings) ?? null;
+  return (data as UserSettingsRow) ?? null;
 }
 
 export async function saveUserSettings(
@@ -23,6 +24,21 @@ export async function saveUserSettings(
       savings_rate_goal: s.savingsRateGoal,
       reporting_currency: s.reportingCurrency,
     },
+    { onConflict: "user_id" }
+  );
+  if (error) throw new Error(error.message);
+}
+
+/**
+ * N'écrit que la colonne du barème : les autres colonnes gardent leur valeur
+ * (ou leur défaut SQL si la ligne n'existe pas encore).
+ */
+export async function saveAbondementBareme(
+  userId: string,
+  bareme: AbondementBareme
+): Promise<void> {
+  const { error } = await supabase.from("user_settings").upsert(
+    { user_id: userId, abondement_bareme: bareme },
     { onConflict: "user_id" }
   );
   if (error) throw new Error(error.message);
