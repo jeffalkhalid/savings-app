@@ -141,6 +141,30 @@ describe("baremeError", () => {
     expect(msg).toContain("PER");
     expect(msg).toContain("Participation");
   });
+
+  it("ne lève jamais même avec un taux Symbol qui bloquerait Number()", () => {
+    const b = {
+      peg: {
+        interessement: [],
+        participation: [],
+        volontaire: [{ upTo: null, rate: Symbol() as unknown }],
+      },
+      per: plan({}),
+    };
+    expect(() => baremeError(b)).not.toThrow();
+    expect(baremeError(b)).not.toBeNull();
+  });
+
+  it("ne lève jamais même avec un getter qui lance une erreur", () => {
+    const b = {
+      get peg() {
+        throw new Error("boom");
+      },
+      per: plan({}),
+    };
+    expect(() => baremeError(b)).not.toThrow();
+    expect(baremeError(b)).not.toBeNull();
+  });
 });
 
 describe("parseBareme", () => {
@@ -166,6 +190,17 @@ describe("parseBareme", () => {
     const parsed = parseBareme(null);
     parsed.peg.volontaire.push({ upTo: null, rate: 0.9 });
     expect(DEFAULT_BAREME.peg.volontaire).toHaveLength(1);
+  });
+
+  it("retombe sur le défaut si un getter lance une erreur", () => {
+    const b = {
+      get peg() {
+        throw new Error("boom");
+      },
+      per: plan({}),
+    };
+    expect(() => parseBareme(b)).not.toThrow();
+    expect(parseBareme(b)).toEqual(DEFAULT_BAREME);
   });
 });
 

@@ -120,19 +120,23 @@ function planError(plan: unknown, planLabel: string): string | null {
 
 /** Message d'erreur en français, ou null si le barème est exploitable. */
 export function baremeError(b: unknown): string | null {
-  if (!b || typeof b !== "object") return "Barème manquant ou illisible.";
-  const rec = b as Record<string, unknown>;
-  return (
-    planError(rec.peg, PLAN_LABELS.peg) ?? planError(rec.per, PLAN_LABELS.per)
-  );
+  try {
+    if (!b || typeof b !== "object") return "Barème manquant ou illisible.";
+    const rec = b as Record<string, unknown>;
+    return (
+      planError(rec.peg, PLAN_LABELS.peg) ?? planError(rec.per, PLAN_LABELS.per)
+    );
+  } catch {
+    return "Barème manquant ou illisible.";
+  }
 }
 
 function clonePlan(p: PlanBareme): PlanBareme {
-  return {
-    interessement: p.interessement.map((t) => ({ ...t })),
-    participation: p.participation.map((t) => ({ ...t })),
-    volontaire: p.volontaire.map((t) => ({ ...t })),
-  };
+  const result: Record<SourceKey, Tranche[]> = {} as PlanBareme;
+  for (const key of SOURCE_KEYS) {
+    result[key] = p[key].map((t) => ({ ...t }));
+  }
+  return result;
 }
 
 export function cloneBareme(b: AbondementBareme): AbondementBareme {
@@ -144,20 +148,24 @@ export function cloneBareme(b: AbondementBareme): AbondementBareme {
  * Ne lève jamais : tout ce qui est invalide retombe sur le barème par défaut.
  */
 export function parseBareme(raw: unknown): AbondementBareme {
-  if (baremeError(raw) !== null) return cloneBareme(DEFAULT_BAREME);
-  const b = raw as AbondementBareme;
-  return cloneBareme({
-    peg: normalizePlan(b.peg),
-    per: normalizePlan(b.per),
-  });
+  try {
+    if (baremeError(raw) !== null) return cloneBareme(DEFAULT_BAREME);
+    const b = raw as AbondementBareme;
+    return cloneBareme({
+      peg: normalizePlan(b.peg),
+      per: normalizePlan(b.per),
+    });
+  } catch {
+    return cloneBareme(DEFAULT_BAREME);
+  }
 }
 
 function normalizePlan(p: PlanBareme): PlanBareme {
-  return {
-    interessement: p.interessement.map(normalizeTranche),
-    participation: p.participation.map(normalizeTranche),
-    volontaire: p.volontaire.map(normalizeTranche),
-  };
+  const result: Record<SourceKey, Tranche[]> = {} as PlanBareme;
+  for (const key of SOURCE_KEYS) {
+    result[key] = p[key].map(normalizeTranche);
+  }
+  return result;
 }
 
 function normalizeTranche(t: Tranche): Tranche {
