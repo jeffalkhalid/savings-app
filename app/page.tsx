@@ -66,8 +66,8 @@ export default function Page() {
               plafonds légaux (8 % PASS).
             </p>
             <p>
-              Construit à partir des barèmes d&apos;abondement Carrefour
-              (cible Khalid). Modifiable dans <code>lib/strategies.ts</code>.
+              Barème d&apos;abondement Carrefour par défaut. Pour utiliser le
+              vôtre, ouvrez l&apos;onglet Épargne de l&apos;app.
             </p>
           </footer>
         </div>
