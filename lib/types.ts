@@ -1,3 +1,5 @@
+import type { AbondementBareme } from "./abondement";
+
 export type StrategyKey = "A" | "B" | "C" | "D" | "E" | "F";
 
 export interface SimulationParams {
@@ -5,6 +7,9 @@ export interface SimulationParams {
   interessement: number;
   participation: number;
   volontaire: number;
+
+  // Barème d'abondement employeur (défaut : Carrefour)
+  bareme: AbondementBareme;
 
   // Marché
   rate: number;

@@ -1,16 +1,19 @@
 import { DEFAULT_PARAMS } from "@/lib/strategies";
+import { DEFAULT_BAREME, type AbondementBareme } from "@/lib/abondement";
 import type { SimulationParams, SimulationResult } from "@/lib/types";
 
 export function buildSimParams(input: {
   volontaire: number;
   rate: number;
   years: number;
+  bareme?: AbondementBareme;
 }): SimulationParams {
   return {
     ...DEFAULT_PARAMS,
     volontaire: input.volontaire,
     rate: input.rate,
     years: input.years,
+    bareme: input.bareme ?? DEFAULT_BAREME,
   };
 }
 

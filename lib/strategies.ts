@@ -1,4 +1,5 @@
 import type { StrategyKey } from "./types";
+import { DEFAULT_BAREME } from "./abondement";
 
 export interface StrategyMeta {
   key: StrategyKey;
@@ -72,6 +73,7 @@ export const DEFAULT_PARAMS = {
   interessement: 1500,
   participation: 1500,
   volontaire: 1000,
+  bareme: DEFAULT_BAREME,
   rate: 0.06,
   years: 30,
   csgPlusValue: 0.186,

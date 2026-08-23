@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { buildSimParams, rankByNet } from "./projection-sim";
 import { DEFAULT_PARAMS } from "@/lib/strategies";
+import { DEFAULT_BAREME } from "@/lib/abondement";
 import type { SimulationResult } from "@/lib/types";
 
 describe("buildSimParams", () => {
@@ -15,6 +16,19 @@ describe("buildSimParams", () => {
     expect(p.plafondPEG).toBe(DEFAULT_PARAMS.plafondPEG);
     expect(p.tmi).toBe(DEFAULT_PARAMS.tmi);
     expect(p.interessement).toBe(DEFAULT_PARAMS.interessement);
+  });
+  it("utilise le barème par défaut quand aucun n'est fourni", () => {
+    const p = buildSimParams({ volontaire: 1000, rate: 0.05, years: 10 });
+    expect(p.bareme).toEqual(DEFAULT_BAREME);
+  });
+
+  it("transmet le barème fourni", () => {
+    const custom = {
+      peg: { interessement: [], participation: [], volontaire: [] },
+      per: { interessement: [], participation: [], volontaire: [] },
+    };
+    const p = buildSimParams({ volontaire: 1000, rate: 0.05, years: 10, bareme: custom });
+    expect(p.bareme).toEqual(custom);
   });
 });
 

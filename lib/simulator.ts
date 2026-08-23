@@ -5,38 +5,7 @@ import type {
   StrategyKey,
 } from "./types";
 import { STRATEGIES, STRATEGY_KEYS } from "./strategies";
-
-/**
- * Abondement employeur sur PEG/PEE (barème Carrefour utilisé par défaut).
- * I = intéressement, P = participation, V = volontaire — montants annuels.
- */
-function computeAbondementPEG(I: number, P: number, V: number): number {
-  // Intéressement : 0-450 @ 40%, 450+ @ 20%
-  const aInt =
-    Math.max(0, Math.min(I, 450)) * 0.4 + Math.max(0, I - 450) * 0.2;
-  // Participation : pas d'abondement
-  const aPart = 0;
-  // Volontaire : 0-1B @ 20% (pratiquement non plafonné)
-  const aVol = Math.max(0, Math.min(V, 1_000_000)) * 0.2;
-  return aInt + aPart + aVol;
-}
-
-/**
- * Abondement employeur sur PER.
- */
-function computeAbondementPER(I: number, P: number, V: number): number {
-  // Intéressement : 0-1000 @ 50%, 1000+ @ 20%
-  const aInt =
-    Math.max(0, Math.min(I, 1000)) * 0.5 + Math.max(0, I - 1000) * 0.2;
-  // Participation : 30%
-  const aPart = P * 0.3;
-  // Volontaire : 0-550 @ 100%, 550-2000 @ 50%, 2000+ @ 25%
-  const aVol =
-    Math.max(0, Math.min(V, 550)) * 1.0 +
-    Math.max(0, Math.min(V, 2000) - 550) * 0.5 +
-    Math.max(0, V - 2000) * 0.25;
-  return aInt + aPart + aVol;
-}
+import { computeAbondement } from "./abondement";
 
 export function simulate(
   strategy: StrategyKey,
@@ -55,8 +24,8 @@ export function simulate(
     plafondPER,
   } = p;
 
-  const baseAbondPEG = computeAbondementPEG(I, P, V);
-  const baseAbondPER = computeAbondementPER(I, P, V);
+  const baseAbondPEG = computeAbondement(p.bareme.peg, I, P, V);
+  const baseAbondPER = computeAbondement(p.bareme.per, I, P, V);
 
   // CSG 9.7% applies ONLY to the abondement employeur (not to I, P, V).
   // Intéressement and participation enter PEG/PER at their full gross value.
