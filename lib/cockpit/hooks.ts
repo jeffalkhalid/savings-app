@@ -314,18 +314,23 @@ export function useGoals() {
 
 export function useUserSettings(userId: string) {
   const [settings, setSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
+  const [loaded, setLoaded] = useState(false);
 
   const refetch = useCallback(() => {
     getUserSettings(userId)
       .then((row) => setSettings(coerceSettings(row)))
-      .catch(() => setSettings(DEFAULT_SETTINGS));
+      .catch((e) => {
+        console.error("useUserSettings: échec du chargement des réglages", e);
+        setSettings(DEFAULT_SETTINGS);
+      })
+      .finally(() => setLoaded(true));
   }, [userId]);
 
   useEffect(() => {
     refetch();
   }, [refetch]);
 
-  return { settings, refetch };
+  return { settings, refetch, loaded };
 }
 
 export function useReminders() {

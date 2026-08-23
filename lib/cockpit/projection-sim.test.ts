@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { buildSimParams, rankByNet } from "./projection-sim";
 import { DEFAULT_PARAMS } from "@/lib/strategies";
-import { DEFAULT_BAREME } from "@/lib/abondement";
+import { DEFAULT_BAREME, type AbondementBareme } from "@/lib/abondement";
+import { simulate } from "@/lib/simulator";
 import type { SimulationResult } from "@/lib/types";
 
 describe("buildSimParams", () => {
@@ -48,5 +49,48 @@ describe("rankByNet", () => {
     const input = [mk("A", 100), mk("B", 300)];
     rankByNet(input);
     expect(input.map((r) => r.strategy)).toEqual(["A", "B"]);
+  });
+});
+
+// Finding A : preuve de bout en bout que le barème d'abondement change
+// réellement le résultat de simulate(), pas seulement le threading jusqu'à
+// buildSimParams. Stratégie B (« PER pur ») : l'abondement PEG n'est jamais
+// utilisé (using = false en permanence), et l'abondement PER entre dans
+// K_PER_net via min(baseAbondPER, plafondPER), donc la relation entre le
+// barème et le résultat reste monotone et sans effet de bord de recyclage.
+const RICH_BAREME: AbondementBareme = {
+  peg: {
+    interessement: [{ upTo: null, rate: 1 }],
+    participation: [{ upTo: null, rate: 1 }],
+    volontaire: [{ upTo: null, rate: 1 }],
+  },
+  per: {
+    interessement: [{ upTo: null, rate: 1 }],
+    participation: [{ upTo: null, rate: 1 }],
+    volontaire: [{ upTo: null, rate: 1 }],
+  },
+};
+
+const EMPTY_BAREME: AbondementBareme = {
+  peg: { interessement: [], participation: [], volontaire: [] },
+  per: { interessement: [], participation: [], volontaire: [] },
+};
+
+function simulateWithBareme(bareme: AbondementBareme) {
+  const params = buildSimParams({ volontaire: 1000, rate: 0.06, years: 20, bareme });
+  return simulate("B", params);
+}
+
+describe("simulate — le barème d'abondement change réellement le résultat", () => {
+  it("un barème plus généreux que le défaut augmente strictement net_total", () => {
+    const base = simulateWithBareme(DEFAULT_BAREME);
+    const rich = simulateWithBareme(RICH_BAREME);
+    expect(rich.summary.net_total).toBeGreaterThan(base.summary.net_total);
+  });
+
+  it("un barème sans aucun abondement diminue strictement net_total", () => {
+    const base = simulateWithBareme(DEFAULT_BAREME);
+    const empty = simulateWithBareme(EMPTY_BAREME);
+    expect(empty.summary.net_total).toBeLessThan(base.summary.net_total);
   });
 });

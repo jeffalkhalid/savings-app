@@ -59,7 +59,19 @@ export function BaremeModal({
   };
 
   const addTranche = (source: SourceKey) => {
-    patch(source, [...draft[plan][source], { upTo: null, rate: 0 }]);
+    const rows = draft[plan][source];
+    const last = rows[rows.length - 1];
+    const hasTrailingOpen = rows.length > 0 && last.upTo === null;
+    // Seuil borné, strictement supérieur au seuil précédent (règle de validation) :
+    // 1000 € au-dessus du dernier seuil connu, ou 1000 € si la liste est vide.
+    const previousUpTo = rows
+      .slice(0, hasTrailingOpen ? rows.length - 1 : rows.length)
+      .reduce((max, t) => (t.upTo !== null && t.upTo > max ? t.upTo : max), 0);
+    const newTranche: Tranche = { upTo: previousUpTo + 1000, rate: 0 };
+    const next = hasTrailingOpen
+      ? [...rows.slice(0, -1), newTranche, last]
+      : [...rows, newTranche];
+    patch(source, next);
     setEdits({});
   };
 

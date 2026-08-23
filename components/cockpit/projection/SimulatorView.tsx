@@ -13,7 +13,7 @@ import { BaremeModal } from "./BaremeModal";
 
 export function SimulatorView({ avgFlow }: { avgFlow: number }) {
   const user = useAuth();
-  const { settings, refetch } = useUserSettings(user.id);
+  const { settings, refetch, loaded } = useUserSettings(user.id);
   const [volontaire, setVolontaire] = useState(0);
   const [touched, setTouched] = useState(false);
   const [rate, setRate] = useState(DEFAULT_PARAMS.rate);
@@ -50,12 +50,17 @@ export function SimulatorView({ avgFlow }: { avgFlow: number }) {
       />
       <button
         type="button"
-        onClick={() => setShowBareme(true)}
-        className="flex items-center justify-between w-full border border-rule rounded-lg px-3 py-3 bg-card mb-6 text-left"
+        onClick={() => {
+          if (loaded) setShowBareme(true);
+        }}
+        disabled={!loaded}
+        className={`flex items-center justify-between w-full border border-rule rounded-lg px-3 py-3 bg-card mb-6 text-left ${
+          loaded ? "" : "opacity-60"
+        }`}
       >
         <span className="text-[13px] text-ink-muted">Barème d&apos;abondement</span>
         <span className="flex items-center gap-1 text-[13px] text-ink font-medium">
-          {isDefault ? "Carrefour (défaut)" : "Personnalisé"}
+          {loaded ? (isDefault ? "Carrefour (défaut)" : "Personnalisé") : "Chargement…"}
           <ChevronRight size={15} className="text-ink-muted" />
         </span>
       </button>
@@ -66,7 +71,7 @@ export function SimulatorView({ avgFlow }: { avgFlow: number }) {
           : "Calculé avec votre barème d'abondement."}{" "}
         Réglage fin complet sur la page principale.
       </p>
-      {showBareme && (
+      {showBareme && loaded && (
         <BaremeModal
           userId={user.id}
           bareme={bareme}
