@@ -78,3 +78,96 @@ export function computeAbondement(
     applyTranches(plan.volontaire, V)
   );
 }
+
+const PLAN_LABELS = { peg: "PEG", per: "PER" } as const;
+
+function trancheListError(list: unknown, where: string): string | null {
+  if (!Array.isArray(list)) return `${where} : liste de tranches invalide.`;
+  let previous = 0;
+  for (let i = 0; i < list.length; i++) {
+    const t = list[i] as Tranche;
+    if (!t || typeof t !== "object") return `${where} : tranche invalide.`;
+    const rate = Number(t.rate);
+    if (!isFinite(rate) || rate < 0 || rate > 2)
+      return `${where} : taux invalide (entre 0 et 200 %).`;
+    if (t.upTo === null) {
+      if (i !== list.length - 1)
+        return `${where} : la tranche « au-delà » doit être la dernière.`;
+      continue;
+    }
+    const upTo = Number(t.upTo);
+    if (!isFinite(upTo) || upTo <= 0)
+      return `${where} : seuil invalide (montant positif attendu).`;
+    if (upTo <= previous)
+      return `${where} : les seuils doivent être croissants.`;
+    previous = upTo;
+  }
+  return null;
+}
+
+function planError(plan: unknown, planLabel: string): string | null {
+  if (!plan || typeof plan !== "object")
+    return `${planLabel} : barème manquant.`;
+  for (const key of SOURCE_KEYS) {
+    const err = trancheListError(
+      (plan as Record<string, unknown>)[key],
+      `${planLabel} · ${SOURCE_LABELS[key]}`
+    );
+    if (err) return err;
+  }
+  return null;
+}
+
+/** Message d'erreur en français, ou null si le barème est exploitable. */
+export function baremeError(b: unknown): string | null {
+  if (!b || typeof b !== "object") return "Barème manquant ou illisible.";
+  const rec = b as Record<string, unknown>;
+  return (
+    planError(rec.peg, PLAN_LABELS.peg) ?? planError(rec.per, PLAN_LABELS.per)
+  );
+}
+
+function clonePlan(p: PlanBareme): PlanBareme {
+  return {
+    interessement: p.interessement.map((t) => ({ ...t })),
+    participation: p.participation.map((t) => ({ ...t })),
+    volontaire: p.volontaire.map((t) => ({ ...t })),
+  };
+}
+
+export function cloneBareme(b: AbondementBareme): AbondementBareme {
+  return { peg: clonePlan(b.peg), per: clonePlan(b.per) };
+}
+
+/**
+ * Lit un barème venu de la base (JSONB) ou d'un formulaire.
+ * Ne lève jamais : tout ce qui est invalide retombe sur le barème par défaut.
+ */
+export function parseBareme(raw: unknown): AbondementBareme {
+  if (baremeError(raw) !== null) return cloneBareme(DEFAULT_BAREME);
+  const b = raw as AbondementBareme;
+  return cloneBareme({
+    peg: normalizePlan(b.peg),
+    per: normalizePlan(b.per),
+  });
+}
+
+function normalizePlan(p: PlanBareme): PlanBareme {
+  return {
+    interessement: p.interessement.map(normalizeTranche),
+    participation: p.participation.map(normalizeTranche),
+    volontaire: p.volontaire.map(normalizeTranche),
+  };
+}
+
+function normalizeTranche(t: Tranche): Tranche {
+  return {
+    upTo: t.upTo === null ? null : Number(t.upTo),
+    rate: Number(t.rate),
+  };
+}
+
+/** Vrai si le barème est exactement le barème Carrefour par défaut. */
+export function isDefaultBareme(b: AbondementBareme): boolean {
+  return JSON.stringify(b) === JSON.stringify(DEFAULT_BAREME);
+}

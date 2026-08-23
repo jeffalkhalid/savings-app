@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { computeAbondement, DEFAULT_BAREME } from "./abondement";
+import { baremeError, computeAbondement, DEFAULT_BAREME, isDefaultBareme, parseBareme } from "./abondement";
 import type { PlanBareme } from "./abondement";
 
 const plan = (p: Partial<PlanBareme>): PlanBareme => ({
@@ -69,5 +69,115 @@ describe("DEFAULT_BAREME (non-régression Carrefour)", () => {
   it("applique la troisième tranche du volontaire PER", () => {
     // 550 * 1 + 1450 * 0.5 + 1000 * 0.25 = 550 + 725 + 250
     expect(computeAbondement(DEFAULT_BAREME.per, 0, 0, 3000)).toBe(1525);
+  });
+});
+
+describe("baremeError", () => {
+  it("accepte le barème par défaut", () => {
+    expect(baremeError(DEFAULT_BAREME)).toBeNull();
+  });
+
+  it("accepte des sources vides", () => {
+    const b = { peg: plan({}), per: plan({}) };
+    expect(baremeError(b)).toBeNull();
+  });
+
+  it("refuse autre chose qu'un objet", () => {
+    expect(baremeError(null)).not.toBeNull();
+    expect(baremeError("peg")).not.toBeNull();
+    expect(baremeError(42)).not.toBeNull();
+  });
+
+  it("refuse un plan manquant", () => {
+    expect(baremeError({ peg: plan({}) })).not.toBeNull();
+  });
+
+  it("refuse une source qui n'est pas un tableau", () => {
+    const b = { peg: { ...plan({}), volontaire: 0.2 }, per: plan({}) };
+    expect(baremeError(b)).not.toBeNull();
+  });
+
+  it("refuse des seuils non croissants", () => {
+    const b = {
+      peg: plan({
+        volontaire: [
+          { upTo: 1000, rate: 0.2 },
+          { upTo: 500, rate: 0.1 },
+        ],
+      }),
+      per: plan({}),
+    };
+    expect(baremeError(b)).toContain("croissant");
+  });
+
+  it("refuse une tranche « au-delà » ailleurs qu'en dernier", () => {
+    const b = {
+      peg: plan({
+        volontaire: [
+          { upTo: null, rate: 0.2 },
+          { upTo: 500, rate: 0.1 },
+        ],
+      }),
+      per: plan({}),
+    };
+    expect(baremeError(b)).not.toBeNull();
+  });
+
+  it("refuse un taux négatif ou aberrant", () => {
+    const neg = { peg: plan({ volontaire: [{ upTo: null, rate: -0.1 }] }), per: plan({}) };
+    const huge = { peg: plan({ volontaire: [{ upTo: null, rate: 3 }] }), per: plan({}) };
+    expect(baremeError(neg)).not.toBeNull();
+    expect(baremeError(huge)).not.toBeNull();
+  });
+
+  it("refuse un seuil nul ou négatif", () => {
+    const b = { peg: plan({ volontaire: [{ upTo: 0, rate: 0.2 }] }), per: plan({}) };
+    expect(baremeError(b)).not.toBeNull();
+  });
+
+  it("nomme le plan et la source fautifs", () => {
+    const b = { peg: plan({}), per: plan({ participation: [{ upTo: null, rate: 9 }] }) };
+    const msg = baremeError(b) ?? "";
+    expect(msg).toContain("PER");
+    expect(msg).toContain("Participation");
+  });
+});
+
+describe("parseBareme", () => {
+  it("retombe sur le défaut pour null ou undefined", () => {
+    expect(parseBareme(null)).toEqual(DEFAULT_BAREME);
+    expect(parseBareme(undefined)).toEqual(DEFAULT_BAREME);
+  });
+
+  it("retombe sur le défaut pour un objet invalide", () => {
+    expect(parseBareme({ peg: "nope" })).toEqual(DEFAULT_BAREME);
+    expect(parseBareme({ hello: "world" })).toEqual(DEFAULT_BAREME);
+  });
+
+  it("conserve un barème valide", () => {
+    const custom = {
+      peg: plan({ volontaire: [{ upTo: null, rate: 0.5 }] }),
+      per: plan({}),
+    };
+    expect(parseBareme(custom)).toEqual(custom);
+  });
+
+  it("renvoie une copie, pas la constante partagée", () => {
+    const parsed = parseBareme(null);
+    parsed.peg.volontaire.push({ upTo: null, rate: 0.9 });
+    expect(DEFAULT_BAREME.peg.volontaire).toHaveLength(1);
+  });
+});
+
+describe("isDefaultBareme", () => {
+  it("reconnaît le barème Carrefour", () => {
+    expect(isDefaultBareme(DEFAULT_BAREME)).toBe(true);
+    expect(isDefaultBareme(parseBareme(null))).toBe(true);
+  });
+
+  it("détecte un barème personnalisé", () => {
+    const custom = parseBareme(null);
+    custom.peg.volontaire[0].rate = 0.25;
+    expect(isDefaultBareme(custom)).toBe(false);
   });
 });
