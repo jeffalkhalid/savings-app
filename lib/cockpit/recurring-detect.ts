@@ -1,14 +1,7 @@
 import type { Txn } from "./types";
+import { normalizePayee } from "./payee-key";
 
-export function normalizePayee(s: string): string {
-  return (s ?? "")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .replace(/[^a-z ]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
+export { normalizePayee };
 
 export type RecurringCandidate = {
   payeeKey: string;
