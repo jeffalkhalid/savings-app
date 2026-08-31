@@ -14,6 +14,7 @@ import type { Asset, AssetValuation, PatrimoineLine } from "./patrimoine";
 import type { Goal } from "./goals";
 import { budgetsToMap, type BudgetRow } from "./budgets";
 import { getUserSettings } from "./user-settings-api";
+import { getCategoryRules } from "./category-rules-api";
 import { getAllocationTargets } from "./allocation-api";
 import { coerceSettings, DEFAULT_SETTINGS, type UserSettings } from "./settings";
 import type { MonthlyCategoryRow } from "./categories-analysis";
@@ -331,6 +332,29 @@ export function useUserSettings(userId: string) {
   }, [refetch]);
 
   return { settings, refetch, loaded };
+}
+
+export function useCategoryRules(userId: string) {
+  const [rules, setRules] = useState<Map<string, string>>(new Map());
+  const [loaded, setLoaded] = useState(false);
+
+  const refetch = useCallback(() => {
+    getCategoryRules(userId)
+      .then((rows) =>
+        setRules(new Map(rows.map((r) => [r.payee_key, r.category_id])))
+      )
+      .catch((e) => {
+        console.error("useCategoryRules: échec du chargement des règles", e);
+        setRules(new Map());
+      })
+      .finally(() => setLoaded(true));
+  }, [userId]);
+
+  useEffect(() => {
+    refetch();
+  }, [refetch]);
+
+  return { rules, loaded, refetch };
 }
 
 export function useReminders() {
