@@ -3,11 +3,13 @@ import {
   parseBareme,
   type AbondementBareme,
 } from "@/lib/abondement";
+import { DEFAULT_SHIFT, parseSalaryShift, type SalaryShift } from "./budget-month";
 
 export type UserSettings = {
   savings_rate_goal: number;
   reporting_currency: string;
   abondement_bareme: AbondementBareme;
+  salary_shift: SalaryShift;
 };
 
 /** Ligne brute telle qu'elle sort de Postgres (JSONB non typé). */
@@ -15,12 +17,14 @@ export type UserSettingsRow = {
   savings_rate_goal?: unknown;
   reporting_currency?: unknown;
   abondement_bareme?: unknown;
+  salary_shift?: unknown;
 };
 
 export const DEFAULT_SETTINGS: UserSettings = {
   savings_rate_goal: 0.2,
   reporting_currency: "EUR",
   abondement_bareme: DEFAULT_BAREME,
+  salary_shift: DEFAULT_SHIFT,
 };
 
 export const CURRENCIES: string[] = ["EUR", "USD", "GBP", "CHF", "CAD"];
@@ -29,7 +33,11 @@ export function coerceSettings(
   row: UserSettingsRow | null | undefined
 ): UserSettings {
   if (!row)
-    return { ...DEFAULT_SETTINGS, abondement_bareme: parseBareme(null) };
+    return {
+      ...DEFAULT_SETTINGS,
+      abondement_bareme: parseBareme(null),
+      salary_shift: parseSalaryShift(null),
+    };
   const goal = Number(row.savings_rate_goal);
   const ccy = row.reporting_currency;
   return {
@@ -40,5 +48,6 @@ export function coerceSettings(
         ? ccy
         : DEFAULT_SETTINGS.reporting_currency,
     abondement_bareme: parseBareme(row.abondement_bareme),
+    salary_shift: parseSalaryShift(row.salary_shift),
   };
 }

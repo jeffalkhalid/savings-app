@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { coerceSettings, DEFAULT_SETTINGS } from "./settings";
 import { DEFAULT_BAREME } from "@/lib/abondement";
+import { DEFAULT_SHIFT } from "@/lib/cockpit/budget-month";
 
 describe("coerceSettings", () => {
   it("returns defaults for null", () => {
@@ -36,5 +37,17 @@ describe("coerceSettings", () => {
       coerceSettings({ reporting_currency: "EUR", abondement_bareme: custom })
         .abondement_bareme
     ).toEqual(custom);
+  });
+
+  it("retombe sur le rattachement par défaut quand la colonne est vide", () => {
+    expect(coerceSettings(null).salary_shift).toEqual(DEFAULT_SHIFT);
+    expect(coerceSettings({ reporting_currency: "EUR" }).salary_shift).toEqual(DEFAULT_SHIFT);
+  });
+
+  it("lit le rattachement personnalisé de la colonne JSONB", () => {
+    const s = { payeeKeys: ["carrefour france"], categoryIds: ["c1"], days: 4 };
+    expect(
+      coerceSettings({ reporting_currency: "EUR", salary_shift: s }).salary_shift
+    ).toEqual(s);
   });
 });

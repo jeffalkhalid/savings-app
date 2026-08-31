@@ -5,6 +5,7 @@ import {
   DEFAULT_SHIFT,
   isShifted,
   nextMonth,
+  parseSalaryShift,
   shiftWindowStart,
 } from "./budget-month";
 import type { Txn } from "./types";
@@ -138,5 +139,35 @@ describe("partition — aucune transaction perdue ni comptée deux fois", () => 
     const months = txns.map((t) => budgetMonthOf(t, SHIFT));
     expect(months).toEqual(["2026-08", "2026-08", "2026-09", "2026-10"]);
     expect(new Set(txns.map((t) => t.id)).size).toBe(4);
+  });
+});
+
+describe("parseSalaryShift", () => {
+  it("retombe sur le défaut pour null ou undefined", () => {
+    expect(parseSalaryShift(null)).toEqual(DEFAULT_SHIFT);
+    expect(parseSalaryShift(undefined)).toEqual(DEFAULT_SHIFT);
+  });
+  it("retombe sur le défaut pour un objet étranger", () => {
+    expect(parseSalaryShift({ hello: "world" })).toEqual(DEFAULT_SHIFT);
+    expect(parseSalaryShift("nope")).toEqual(DEFAULT_SHIFT);
+    expect(parseSalaryShift(42)).toEqual(DEFAULT_SHIFT);
+  });
+  it("conserve une configuration valide", () => {
+    const s = { payeeKeys: ["carrefour france"], categoryIds: ["c1"], days: 4 };
+    expect(parseSalaryShift(s)).toEqual(s);
+  });
+  it("ignore les entrées non textuelles des listes", () => {
+    const s = { payeeKeys: ["ok", 3, null], categoryIds: ["c1"], days: 4 };
+    expect(parseSalaryShift(s).payeeKeys).toEqual(["ok"]);
+  });
+  it("borne days entre 1 et 15", () => {
+    expect(parseSalaryShift({ payeeKeys: [], categoryIds: [], days: 0 }).days).toBe(4);
+    expect(parseSalaryShift({ payeeKeys: [], categoryIds: [], days: 99 }).days).toBe(4);
+    expect(parseSalaryShift({ payeeKeys: [], categoryIds: [], days: 7 }).days).toBe(7);
+  });
+  it("renvoie une copie, pas la constante partagée", () => {
+    const parsed = parseSalaryShift(null);
+    parsed.payeeKeys.push("x");
+    expect(DEFAULT_SHIFT.payeeKeys).toHaveLength(0);
   });
 });

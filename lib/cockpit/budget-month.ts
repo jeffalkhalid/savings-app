@@ -71,3 +71,31 @@ export function budgetMonthOf(t: Txn, s: SalaryShift): string {
   const month = t.date.slice(0, 7);
   return isShifted(t, s) ? nextMonth(month) : month;
 }
+
+const MIN_DAYS = 1;
+const MAX_DAYS = 15;
+
+const stringsOf = (v: unknown): string[] =>
+  Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+
+/**
+ * Lit une configuration venue de la base (JSONB) ou d'un formulaire.
+ * Ne lève jamais : tout ce qui est invalide retombe sur DEFAULT_SHIFT.
+ */
+export function parseSalaryShift(raw: unknown): SalaryShift {
+  try {
+    if (!raw || typeof raw !== "object") return { ...DEFAULT_SHIFT, payeeKeys: [], categoryIds: [] };
+    const r = raw as Record<string, unknown>;
+    const days = Number(r.days);
+    return {
+      payeeKeys: stringsOf(r.payeeKeys),
+      categoryIds: stringsOf(r.categoryIds),
+      days:
+        isFinite(days) && days >= MIN_DAYS && days <= MAX_DAYS
+          ? days
+          : DEFAULT_SHIFT.days,
+    };
+  } catch {
+    return { ...DEFAULT_SHIFT, payeeKeys: [], categoryIds: [] };
+  }
+}
