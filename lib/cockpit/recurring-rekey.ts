@@ -6,6 +6,7 @@ export type RekeyInput = {
   label: string;
   expected_amount: number;
   created_at: string;
+  active: boolean;
 };
 
 export type RekeyPlan = {
@@ -18,7 +19,13 @@ export type RekeyPlan = {
  *
  * Plusieurs anciennes clés peuvent converger vers une seule — c'est l'effet
  * recherché — mais la contrainte `unique (user_id, payee_key)` interdit deux
- * lignes de même clé : on garde la plus récente et on supprime les autres.
+ * lignes de même clé : on garde une survivante et on supprime les autres.
+ *
+ * `listAllRecurringCharges` inclut volontairement les charges inactives (pour
+ * pouvoir les re-clé elles aussi), mais une charge inactive ne doit jamais
+ * l'emporter sur une charge active en collision : une charge active bat
+ * toujours une inactive, quelle que soit sa date ; à statut d'activité égal,
+ * `created_at` décroissant tranche.
  */
 export function planRekey(charges: RekeyInput[]): RekeyPlan {
   const byNewKey = new Map<string, RekeyInput[]>();
@@ -34,9 +41,10 @@ export function planRekey(charges: RekeyInput[]): RekeyPlan {
   const deletes: string[] = [];
 
   for (const [key, list] of byNewKey) {
-    const sorted = [...list].sort((a, b) =>
-      a.created_at < b.created_at ? 1 : a.created_at > b.created_at ? -1 : 0
-    );
+    const sorted = [...list].sort((a, b) => {
+      if (a.active !== b.active) return a.active ? -1 : 1;
+      return a.created_at < b.created_at ? 1 : a.created_at > b.created_at ? -1 : 0;
+    });
     const keep = sorted[0];
     for (const ch of sorted.slice(1)) deletes.push(ch.id);
     if (keep.payee_key !== key) updates.push({ id: keep.id, payeeKey: key });

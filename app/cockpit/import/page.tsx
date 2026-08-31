@@ -60,8 +60,8 @@ export default function ImportPage() {
   }, [liveCategories, user.id]);
   const { accounts } = useAccounts();
   const { charges } = useRecurringCharges();
-  const { rules, refetch: refetchRules } = useCategoryRules(user.id);
-  const { txns: allTxns } = useAllTransactions();
+  const { rules, loaded: rulesLoaded, refetch: refetchRules } = useCategoryRules(user.id);
+  const { txns: allTxns, loading: txnsLoading } = useAllTransactions();
   const engagementKeys = useMemo(
     () => new Set(charges.map((c) => c.payee_key)),
     [charges]
@@ -177,7 +177,9 @@ export default function ImportPage() {
     if (!rows || pickerFor === null) return;
     const cat = categories.find((c) => c.name === name);
     if (pickerFor === "bulk") {
-      const next = applyCategoryToSelection(rows, selected, name);
+      const next = applyCategoryToSelection(rows, selected, name).map((r, i) =>
+        selected.has(i) ? { ...r, provenance: "rule" as const } : r
+      );
       setRows(next);
       if (cat) {
         const newRules = rulesFromSelection(rows, selected, cat.id);
@@ -194,7 +196,17 @@ export default function ImportPage() {
       const i = pickerFor;
       const key = rows[i].payeeKey;
       setRows((rs) =>
-        rs ? rs.map((r) => (r.payeeKey === key ? { ...r, categoryName: name } : r)) : rs
+        rs
+          ? rs.map((r, idx) =>
+              key
+                ? r.payeeKey === key
+                  ? { ...r, categoryName: name, provenance: "rule" as const }
+                  : r
+                : idx === i
+                  ? { ...r, categoryName: name, provenance: "rule" as const }
+                  : r
+            )
+          : rs
       );
       if (cat && key) {
         try {
@@ -286,7 +298,7 @@ export default function ImportPage() {
       </header>
 
       {!rows &&
-        (categories.length && accounts.length ? (
+        (categories.length && accounts.length && rulesLoaded && !txnsLoading ? (
           <ImportDropzone onFile={handleFile} />
         ) : (
           <p className="text-ink-muted text-sm">Chargement des catégories…</p>

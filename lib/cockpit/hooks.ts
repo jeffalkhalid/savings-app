@@ -226,7 +226,7 @@ export function useAllTransactions() {
   useEffect(() => {
     supabase
       .from("transactions")
-      .select("id,date,amount,type,description")
+      .select("id,date,amount,type,description,category_id")
       .then(({ data, error }) => {
         if (error) setError(error.message);
         else {

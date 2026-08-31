@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Category, Account } from "@/lib/cockpit/types";
 import type { ClassifiedRow } from "@/lib/cockpit/classify";
 import { ReviewRow } from "./ReviewRow";
@@ -53,6 +53,11 @@ export function ReviewTable({
   const toImport = rows.filter((r) => r.include).length;
   const dupes = rows.filter((r) => r.duplicate).length;
   const [shown, setShown] = useState(100);
+  // Sans ça, basculer le filtre garde le compteur d'affichage de la vue précédente,
+  // ce qui peut cacher des lignes qui devraient apparaître dans la nouvelle vue.
+  useEffect(() => {
+    setShown(100);
+  }, [guessOnly]);
   const visible = rows
     .map((r, i) => ({ r, i }))
     .filter(({ r }) => (guessOnly ? r.provenance === "guess" : true));

@@ -5,8 +5,9 @@ const c = (
   id: string,
   payee_key: string,
   label: string,
-  created_at: string
-) => ({ id, payee_key, label, expected_amount: 10, created_at });
+  created_at: string,
+  active = true
+) => ({ id, payee_key, label, expected_amount: 10, created_at, active });
 
 describe("planRekey", () => {
   it("ne touche pas une charge dont la clé est déjà correcte", () => {
@@ -69,5 +70,28 @@ describe("planRekey", () => {
     const plan = planRekey([c("1", "x", "", "2026-01-01")]);
     expect(plan.updates).toEqual([]);
     expect(plan.deletes).toEqual([]);
+  });
+
+  it("garde la charge active même face à un doublon inactif plus récent", () => {
+    const plan = planRekey([
+      c(
+        "active-ancienne",
+        "cle-a",
+        "PRLV SEPA FONCIA VAL DE MARNE GERANCE ECH/211025 ID EMETTEUR/FR62ZZZ431223 MDT/W1 REF/E2E-1 LIB/X",
+        "2026-01-01",
+        true
+      ),
+      c(
+        "inactive-recente",
+        "cle-b",
+        "PRLV SEPA FONCIA VAL DE MARNE GERANCE ECH/211125 ID EMETTEUR/FR62ZZZ431223 MDT/W1 REF/E2E-2 LIB/X",
+        "2026-02-01",
+        false
+      ),
+    ]);
+    expect(plan.updates).toEqual([
+      { id: "active-ancienne", payeeKey: "foncia val de marne gerance" },
+    ]);
+    expect(plan.deletes).toEqual(["inactive-recente"]);
   });
 });

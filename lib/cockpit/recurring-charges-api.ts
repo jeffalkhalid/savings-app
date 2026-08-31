@@ -55,6 +55,7 @@ export type RecurringChargeRow = {
   label: string;
   expected_amount: number;
   created_at: string;
+  active: boolean;
 };
 
 export async function listAllRecurringCharges(
@@ -62,7 +63,7 @@ export async function listAllRecurringCharges(
 ): Promise<RecurringChargeRow[]> {
   const { data, error } = await supabase
     .from("recurring_charges")
-    .select("id,payee_key,label,expected_amount,created_at")
+    .select("id,payee_key,label,expected_amount,created_at,active")
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
   if (error) throw new Error(error.message);
