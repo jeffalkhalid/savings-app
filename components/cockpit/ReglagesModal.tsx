@@ -6,10 +6,11 @@ import { CURRENCIES, type UserSettings } from "@/lib/cockpit/settings";
 import { useTheme } from "@/components/cockpit/ThemeProvider";
 import { supabase } from "@/lib/cockpit/supabase";
 import type { ThemePref } from "@/lib/cockpit/theme";
-import type { Category } from "@/lib/cockpit/types";
+import type { Category, Txn } from "@/lib/cockpit/types";
 import { CategoriesModal } from "@/components/cockpit/CategoriesModal";
 import { useIsAdmin } from "@/lib/cockpit/hooks";
 import { AdminsModal } from "@/components/cockpit/AdminsModal";
+import { SalaryShiftModal } from "@/components/cockpit/SalaryShiftModal";
 import { planRekey } from "@/lib/cockpit/recurring-rekey";
 import {
   listAllRecurringCharges,
@@ -27,6 +28,7 @@ export function ReglagesModal({
   userId,
   settings,
   categories,
+  allTxns,
   onClose,
   onSaved,
   onCategoriesChanged,
@@ -34,6 +36,7 @@ export function ReglagesModal({
   userId: string;
   settings: UserSettings;
   categories: Category[];
+  allTxns: Txn[];
   onClose: () => void;
   onSaved: () => void;
   onCategoriesChanged: () => void;
@@ -48,6 +51,7 @@ export function ReglagesModal({
   const [showCategories, setShowCategories] = useState(false);
   const { isAdmin } = useIsAdmin();
   const [showAdmins, setShowAdmins] = useState(false);
+  const [showSalaryShift, setShowSalaryShift] = useState(false);
   const [rekeying, setRekeying] = useState(false);
   const [rekeyNote, setRekeyNote] = useState("");
 
@@ -186,6 +190,13 @@ export function ReglagesModal({
           </button>
           <button
             type="button"
+            onClick={() => setShowSalaryShift(true)}
+            className="text-ink text-sm py-2 text-left"
+          >
+            Salaire rattaché au mois suivant
+          </button>
+          <button
+            type="button"
             onClick={rekey}
             disabled={rekeying}
             className="text-ink text-sm py-2 text-left disabled:opacity-60"
@@ -222,6 +233,19 @@ export function ReglagesModal({
     )}
     {showAdmins && (
       <AdminsModal userId={userId} onClose={() => setShowAdmins(false)} />
+    )}
+    {showSalaryShift && (
+      <SalaryShiftModal
+        userId={userId}
+        shift={settings.salary_shift}
+        categories={categories}
+        allTxns={allTxns}
+        onClose={() => setShowSalaryShift(false)}
+        onSaved={() => {
+          onSaved();
+          setShowSalaryShift(false);
+        }}
+      />
     )}
     </>
   );

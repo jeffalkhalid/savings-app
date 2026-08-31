@@ -357,6 +357,7 @@ export default function DashboardPage() {
           userId={user.id}
           settings={settings}
           categories={categories}
+          allTxns={allTxns}
           onCategoriesChanged={refetchCategories}
           onClose={() => setShowSettings(false)}
           onSaved={() => {
