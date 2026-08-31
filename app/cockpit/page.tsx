@@ -86,14 +86,14 @@ export default function DashboardPage() {
   const [transferError, setTransferError] = useState<string | null>(null);
   const [classifying, setClassifying] = useState(false);
 
-  const { txns, refetch } = useTransactions(month);
+  const { settings, refetch: refetchSettings } = useUserSettings(user.id);
+  const { txns, refetch } = useTransactions(month, settings.salary_shift);
   const { categories, refetch: refetchCategories } = useCategories();
   const { budgets, refetch: refetchBudgets } = useCategoryBudgets();
   const { charges, refetch: refetchCharges } = useRecurringCharges();
   const { txns: allTxns } = useAllTransactions();
   const { accounts } = useAccounts();
   const { rows: monthlyByCat, error: catError } = useMonthlyByCategory(user.id);
-  const { settings, refetch: refetchSettings } = useUserSettings(user.id);
   const { reminders, refetch: refetchReminders } = useReminders();
   const { goals } = useGoals();
 

@@ -5,10 +5,12 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
 } from "react";
 import { supabase } from "./supabase";
 import { monthRange } from "./format";
+import { budgetMonthOf, shiftWindowStart, type SalaryShift } from "./budget-month";
 import type { Txn, Category, Account } from "./types";
 import type { Asset, AssetValuation, PatrimoineLine } from "./patrimoine";
 import type { Goal } from "./goals";
@@ -50,18 +52,39 @@ export function useSession() {
   return { user, ready };
 }
 
-export function useTransactions(month: string) {
+/**
+ * `coerceSettings` recrée un nouvel objet `SalaryShift` à chaque fetch, même
+ * quand son contenu n'a pas changé. On renvoie une référence stable tant que
+ * les valeurs (payeeKeys, categoryIds, days) sont identiques, pour que les
+ * hooks qui en dépendent (ex. useTransactions) ne se déclenchent pas à
+ * chaque re-render — sans avoir besoin d'un eslint-disable sur les deps.
+ */
+function useStableSalaryShift(shift: SalaryShift): SalaryShift {
+  const key = `${shift.payeeKeys.join(",")}|${shift.categoryIds.join(",")}|${shift.days}`;
+  const ref = useRef({ key, shift });
+  if (ref.current.key !== key) {
+    ref.current = { key, shift };
+  }
+  return ref.current.shift;
+}
+
+export function useTransactions(month: string, shift: SalaryShift) {
   const [txns, setTxns] = useState<Txn[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const stableShift = useStableSalaryShift(shift);
+
   const refetch = useCallback(() => {
-    const { start, next } = monthRange(month);
+    const { next } = monthRange(month);
+    // Fenêtre élargie vers l'arrière : une transaction des derniers jours du
+    // mois précédent peut être rattachée à ce mois-ci.
+    const from = shiftWindowStart(month, stableShift.days);
     setLoading(true);
     supabase
       .from("transactions")
       .select("*")
-      .gte("date", start)
+      .gte("date", from)
       .lt("date", next)
       .order("date", { ascending: false })
       .then(({ data, error }) => {
@@ -69,11 +92,12 @@ export function useTransactions(month: string) {
           setError(error.message);
         } else {
           setError(null);
-          setTxns((data as Txn[]) ?? []);
+          const all = (data as Txn[]) ?? [];
+          setTxns(all.filter((t) => budgetMonthOf(t, stableShift) === month));
         }
         setLoading(false);
       });
-  }, [month]);
+  }, [month, stableShift]);
 
   useEffect(() => {
     refetch();
