@@ -141,12 +141,14 @@ export default function ImportPage() {
         accountId,
       });
     }
-    if (unresolved.length) {
-      setError(
-        `${unresolved.length} ligne(s) ignorée(s) : catégorie introuvable et « ${FALLBACK_CATEGORY} » absente de vos catégories.`
-      );
+    if (!importRows.length) {
+      if (unresolved.length) {
+        setError(
+          `${unresolved.length} ligne(s) ignorée(s) : catégorie introuvable et « ${FALLBACK_CATEGORY} » absente de vos catégories.`
+        );
+      }
+      return;
     }
-    if (!importRows.length) return;
     setImporting(true);
     try {
       await createTransactionsBulk(user.id, importRows);
@@ -163,6 +165,14 @@ export default function ImportPage() {
         });
       }
       refetchRules();
+      if (unresolved.length) {
+        setRows(null);
+        setImporting(false);
+        setError(
+          `Import terminé. ${unresolved.length} ligne(s) ignorée(s) : catégorie introuvable et « ${FALLBACK_CATEGORY} » absente de vos catégories. Ajoutez la catégorie « ${FALLBACK_CATEGORY} » puis réimportez ces lignes.`
+        );
+        return;
+      }
       router.push("/cockpit");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur");
