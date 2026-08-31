@@ -1,5 +1,5 @@
 import type { Txn } from "./types";
-import { normalizePayee } from "./recurring-detect";
+import { merchantKey } from "./payee-key";
 
 export type ChargeLite = { payeeKey: string; expected: number };
 export type ChargeStatus = "paye" | "a_venir" | "hausse" | "baisse";
@@ -19,7 +19,7 @@ export function matchMonth(
   const spent = new Map<string, number>();
   for (const t of monthTxns) {
     if (t.type !== "expense") continue;
-    const k = normalizePayee(t.description);
+    const k = merchantKey(t.description);
     spent.set(k, (spent.get(k) ?? 0) + Math.abs(Number(t.amount)));
   }
   return charges.map((c) => {

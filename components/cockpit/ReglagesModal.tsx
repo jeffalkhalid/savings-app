@@ -10,6 +10,12 @@ import type { Category } from "@/lib/cockpit/types";
 import { CategoriesModal } from "@/components/cockpit/CategoriesModal";
 import { useIsAdmin } from "@/lib/cockpit/hooks";
 import { AdminsModal } from "@/components/cockpit/AdminsModal";
+import { planRekey } from "@/lib/cockpit/recurring-rekey";
+import {
+  listAllRecurringCharges,
+  updateRecurringChargeKey,
+  deleteRecurringCharges,
+} from "@/lib/cockpit/recurring-charges-api";
 
 const THEME_OPTS: { v: ThemePref; label: string }[] = [
   { v: "light", label: "Clair" },
@@ -42,6 +48,27 @@ export function ReglagesModal({
   const [showCategories, setShowCategories] = useState(false);
   const { isAdmin } = useIsAdmin();
   const [showAdmins, setShowAdmins] = useState(false);
+  const [rekeying, setRekeying] = useState(false);
+  const [rekeyNote, setRekeyNote] = useState("");
+
+  const rekey = async () => {
+    setRekeying(true);
+    setRekeyNote("");
+    try {
+      const charges = await listAllRecurringCharges(userId);
+      const plan = planRekey(charges);
+      await deleteRecurringCharges(plan.deletes);
+      for (const u of plan.updates) {
+        await updateRecurringChargeKey(u.id, u.payeeKey);
+      }
+      setRekeyNote(
+        `${charges.length} engagement(s), ${plan.updates.length} re-clé(s), ${plan.deletes.length} fusionné(s).`
+      );
+    } catch (e) {
+      setRekeyNote(e instanceof Error ? e.message : "Erreur");
+    }
+    setRekeying(false);
+  };
 
   const field = "border border-rule rounded-lg px-3 py-3 bg-card text-ink text-base w-full";
   const labelCls = "grid gap-1.5 text-[13px] text-ink-muted";
@@ -144,6 +171,15 @@ export function ReglagesModal({
           >
             Gérer les catégories
           </button>
+          <button
+            type="button"
+            onClick={rekey}
+            disabled={rekeying}
+            className="text-ink text-sm py-2 text-left disabled:opacity-60"
+          >
+            {rekeying ? "Recalcul…" : "Recalculer les clés d'engagement"}
+          </button>
+          {rekeyNote && <p className="text-[13px] text-ink-muted">{rekeyNote}</p>}
           {isAdmin && (
             <button
               type="button"

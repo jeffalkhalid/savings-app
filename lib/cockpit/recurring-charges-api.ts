@@ -47,3 +47,43 @@ export async function deleteRecurringCharge(id: string): Promise<void> {
     .eq("id", id);
   if (error) throw new Error(error.message);
 }
+
+/** Ligne complète, y compris les charges inactives et created_at : pour la re-clé. */
+export type RecurringChargeRow = {
+  id: string;
+  payee_key: string;
+  label: string;
+  expected_amount: number;
+  created_at: string;
+};
+
+export async function listAllRecurringCharges(
+  userId: string
+): Promise<RecurringChargeRow[]> {
+  const { data, error } = await supabase
+    .from("recurring_charges")
+    .select("id,payee_key,label,expected_amount,created_at")
+    .eq("user_id", userId);
+  if (error) throw new Error(error.message);
+  return (data as RecurringChargeRow[]) ?? [];
+}
+
+export async function updateRecurringChargeKey(
+  id: string,
+  payeeKey: string
+): Promise<void> {
+  const { error } = await supabase
+    .from("recurring_charges")
+    .update({ payee_key: payeeKey })
+    .eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
+export async function deleteRecurringCharges(ids: string[]): Promise<void> {
+  if (!ids.length) return;
+  const { error } = await supabase
+    .from("recurring_charges")
+    .delete()
+    .in("id", ids);
+  if (error) throw new Error(error.message);
+}

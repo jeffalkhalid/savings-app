@@ -9,7 +9,8 @@ import {
 import { todayISO } from "@/lib/cockpit/format";
 import type { Category, Account, Txn } from "@/lib/cockpit/types";
 import type { Goal } from "@/lib/cockpit/goals";
-import { normalizePayee, isEngagement } from "@/lib/cockpit/recurring-detect";
+import { isEngagement } from "@/lib/cockpit/recurring-detect";
+import { merchantKey } from "@/lib/cockpit/payee-key";
 import { createRecurringCharge } from "@/lib/cockpit/recurring-charges-api";
 
 export function TxnModal({
@@ -109,7 +110,7 @@ export function TxnModal({
       else await createTransaction(userId, fields);
       if (cat.type === "expense" && engagement && !alreadyEngagement) {
         await createRecurringCharge(userId, {
-          payeeKey: normalizePayee(payeeOf),
+          payeeKey: merchantKey(payeeOf),
           label: payeeOf,
           expectedAmount: amt,
         });

@@ -1,5 +1,5 @@
 import type { Txn } from "./types";
-import { normalizePayee } from "./payee-key";
+import { normalizePayee, merchantKey } from "./payee-key";
 
 export { normalizePayee };
 
@@ -42,7 +42,7 @@ export function detectRecurring(
     if (t.type !== "expense") continue;
     const ym = t.date.slice(0, 7);
     if (!months.has(ym)) continue;
-    const key = normalizePayee(t.description);
+    const key = merchantKey(t.description);
     if (!key) continue;
     const g = groups.get(key) ?? { byMonth: new Map(), labels: new Map() };
     g.byMonth.set(ym, (g.byMonth.get(ym) ?? 0) + Math.abs(Number(t.amount)));
@@ -68,5 +68,5 @@ export function detectRecurring(
 }
 
 export function isEngagement(description: string, keys: Set<string>): boolean {
-  return keys.has(normalizePayee(description));
+  return keys.has(merchantKey(description));
 }
