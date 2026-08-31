@@ -15,6 +15,7 @@ export function OpsDrill({
   onChip,
   onSelectTxn,
   onBack,
+  shiftedLabelOf,
 }: {
   mode: "category" | "all";
   title: string;
@@ -27,6 +28,7 @@ export function OpsDrill({
   onChip: (id: string | null) => void;
   onSelectTxn: (t: Txn) => void;
   onBack: () => void;
+  shiftedLabelOf?: (txn: Txn) => string | undefined;
 }) {
   const shown = filterTxns(txns, query, mode === "all" ? chip : null);
   const total = shown.reduce((a, t) => a + Math.abs(Number(t.amount)), 0);
@@ -104,6 +106,7 @@ export function OpsDrill({
 
       {shown.map((t) => {
         const amt = Number(t.amount);
+        const shiftedTo = shiftedLabelOf?.(t);
         return (
           <button
             key={t.id}
@@ -115,6 +118,9 @@ export function OpsDrill({
               <div className="text-sm truncate">{t.description}</div>
               <div className="text-[11.5px] text-ink-muted mt-0.5">
                 {fmtDate(t.date)}
+                {shiftedTo && (
+                  <span className="text-accent"> · rattaché à {shiftedTo}</span>
+                )}
               </div>
             </div>
             <span

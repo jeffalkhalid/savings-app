@@ -91,7 +91,7 @@ export function parseSalaryShift(raw: unknown): SalaryShift {
       payeeKeys: stringsOf(r.payeeKeys),
       categoryIds: stringsOf(r.categoryIds),
       days:
-        isFinite(days) && days >= MIN_DAYS && days <= MAX_DAYS
+        Number.isInteger(days) && days >= MIN_DAYS && days <= MAX_DAYS
           ? days
           : DEFAULT_SHIFT.days,
     };

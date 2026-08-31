@@ -165,6 +165,9 @@ describe("parseSalaryShift", () => {
     expect(parseSalaryShift({ payeeKeys: [], categoryIds: [], days: 99 }).days).toBe(4);
     expect(parseSalaryShift({ payeeKeys: [], categoryIds: [], days: 7 }).days).toBe(7);
   });
+  it("retombe sur le défaut pour un days non entier", () => {
+    expect(parseSalaryShift({ payeeKeys: [], categoryIds: [], days: 4.5 }).days).toBe(4);
+  });
   it("renvoie une copie, pas la constante partagée", () => {
     const parsed = parseSalaryShift(null);
     parsed.payeeKeys.push("x");

@@ -278,6 +278,7 @@ export default function DashboardPage() {
           onChip={setChip}
           onSelectTxn={setEditTxn}
           onBack={() => setDrill(null)}
+          shiftedLabelOf={shiftedLabelOf}
         />
       ) : (
         <>
