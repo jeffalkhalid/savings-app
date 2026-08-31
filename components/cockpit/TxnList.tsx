@@ -7,6 +7,7 @@ export function TxnList({
   loading,
   error,
   monthLabel,
+  shiftedLabelOf,
   onSelect,
 }: {
   txns: Txn[];
@@ -14,6 +15,7 @@ export function TxnList({
   loading: boolean;
   error: string | null;
   monthLabel: string;
+  shiftedLabelOf?: (txn: Txn) => string | undefined;
   onSelect: (txn: Txn) => void;
 }) {
   const nameOf = (id?: string | null) =>
@@ -37,6 +39,7 @@ export function TxnList({
             key={t.id}
             txn={t}
             categoryName={nameOf(t.category_id)}
+            shiftedTo={shiftedLabelOf?.(t)}
             onSelect={() => onSelect(t)}
           />
         ))}

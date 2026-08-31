@@ -4,10 +4,12 @@ import { eur } from "@/lib/cockpit/format";
 export function TxnRow({
   txn,
   categoryName,
+  shiftedTo,
   onSelect,
 }: {
   txn: Txn;
   categoryName?: string;
+  shiftedTo?: string;
   onSelect: () => void;
 }) {
   const neg = Number(txn.amount) < 0;
@@ -22,6 +24,9 @@ export function TxnRow({
         <div className="text-[11px] text-ink-muted mt-0.5">
           {txn.date}
           {categoryName ? ` · ${categoryName}` : ""}
+          {shiftedTo && (
+            <span className="ml-1 text-accent">· rattaché à {shiftedTo}</span>
+          )}
         </div>
       </div>
       <strong

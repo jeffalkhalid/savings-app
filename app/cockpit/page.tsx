@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import Link from "next/link";
 import {
   useAuth,
@@ -20,6 +20,7 @@ import { analyzeCategories } from "@/lib/cockpit/categories-analysis";
 import { detectRecurring } from "@/lib/cockpit/recurring-detect";
 import { matchMonth, engagementsTotals } from "@/lib/cockpit/recurring-match";
 import { pendingTransfers } from "@/lib/cockpit/transfers";
+import { isShifted } from "@/lib/cockpit/budget-month";
 import {
   ensureTransferCategories,
   classifyAllTransfers,
@@ -139,6 +140,13 @@ export default function DashboardPage() {
   );
   const notes = useMemo(() => buildNotes(insights, mood), [insights, mood]);
   const label = monthLabelOf(month);
+  const shiftedLabelOf = useCallback(
+    (t: Txn) =>
+      isShifted(t, settings.salary_shift)
+        ? monthLabelOf(month)
+        : undefined,
+    [settings.salary_shift, month]
+  );
   const today = todayISO();
   const reminderDue = dueCount(reminders, today);
 
