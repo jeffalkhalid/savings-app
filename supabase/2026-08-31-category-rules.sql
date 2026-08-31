@@ -9,6 +9,7 @@ create table if not exists public.category_rules (
 
 alter table public.category_rules enable row level security;
 
+drop policy if exists "category_rules_per_user" on public.category_rules;
 create policy "category_rules_per_user" on public.category_rules
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
