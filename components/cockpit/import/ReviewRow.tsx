@@ -1,11 +1,23 @@
 import { eur } from "@/lib/cockpit/format";
 import type { Category } from "@/lib/cockpit/types";
 import type { ReviewRow as ReviewRowData } from "@/lib/cockpit/bnp-import";
+import type { Provenance } from "@/lib/cockpit/classify";
+
+const PROVENANCE_LABEL: Record<Provenance, string> = {
+  rule: "règle",
+  history: "historique",
+  bnp: "BNP",
+  transfer: "virement",
+  guess: "deviné",
+};
 
 export function ReviewRow({
   row,
   categories,
-  onCategory,
+  provenance,
+  selected,
+  onToggleSelected,
+  onOpenPicker,
   onToggleInclude,
   engagementKnown,
   engagement,
@@ -13,7 +25,11 @@ export function ReviewRow({
 }: {
   row: ReviewRowData & { include: boolean };
   categories: Category[];
-  onCategory: (name: string) => void;
+  provenance: Provenance;
+  selected: boolean;
+  onToggleSelected: (v: boolean) => void;
+  onOpenPicker: () => void;
+  onCategory?: (name: string) => void;
   onToggleInclude: (v: boolean) => void;
   engagementKnown: boolean;
   engagement: boolean;
@@ -28,11 +44,22 @@ export function ReviewRow({
       }`}
     >
       <div className="flex justify-between items-center gap-2">
-        <div className="min-w-0">
+        <label className="flex items-center gap-1 text-[11px] text-ink-muted shrink-0">
+          <input
+            type="checkbox"
+            checked={selected}
+            onChange={(e) => onToggleSelected(e.target.checked)}
+          />
+          sél.
+        </label>
+        <div className="min-w-0 flex-1">
           <div className="text-sm truncate">{row.label}</div>
           <div className="text-[11px] text-ink-muted">
             {row.date}
             {row.duplicate ? " · doublon" : ""}
+            <span className="ml-1 text-[10px] uppercase tracking-wide text-ink-muted border border-rule rounded px-1 py-0.5">
+              {PROVENANCE_LABEL[provenance]}
+            </span>
           </div>
         </div>
         <strong
@@ -44,22 +71,15 @@ export function ReviewRow({
         </strong>
       </div>
       <div className="flex items-center gap-2 mt-1.5">
-        <select
-          className={`border rounded-lg px-2 py-1.5 text-[13px] bg-card text-ink flex-1 ${
-            resolved ? "border-rule" : "border-strat-a"
+        <button
+          type="button"
+          onClick={onOpenPicker}
+          className={`text-left text-[13px] px-2 py-1.5 rounded-lg border border-rule bg-card ${
+            resolved ? "text-ink" : "text-accent"
           }`}
-          value={row.categoryName}
-          onChange={(e) => onCategory(e.target.value)}
         >
-          {!resolved && (
-            <option value={row.categoryName}>{row.categoryName} (?)</option>
-          )}
-          {categories.map((c) => (
-            <option key={c.id} value={c.name}>
-              {c.name}
-            </option>
-          ))}
-        </select>
+          {row.categoryName || "Choisir…"}
+        </button>
         {neg &&
           (engagementKnown ? (
             <span className="text-[11px] text-emerald shrink-0">engagement</span>

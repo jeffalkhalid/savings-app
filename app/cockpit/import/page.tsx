@@ -16,20 +16,35 @@ import {
   parseBnpSheet,
   rowKey,
 } from "@/lib/cockpit/bnp-import";
-import type { ReviewRow as ReviewRowData } from "@/lib/cockpit/bnp-import";
 import {
   createTransactionsBulk,
   type ImportRow,
 } from "@/lib/cockpit/transactions-api";
-import { classifyRows, buildHistoryMap, FALLBACK_CATEGORY } from "@/lib/cockpit/classify";
+import {
+  classifyRows,
+  buildHistoryMap,
+  FALLBACK_CATEGORY,
+  type ClassifiedRow,
+} from "@/lib/cockpit/classify";
+import {
+  applyCategoryToSelection,
+  rulesFromSelection,
+  bulkSummary,
+} from "@/lib/cockpit/bulk-select";
+import { setCategoryRule, setCategoryRules } from "@/lib/cockpit/category-rules-api";
 import { createRecurringCharge } from "@/lib/cockpit/recurring-charges-api";
 import { merchantKey } from "@/lib/cockpit/payee-key";
 import { ensureTransferCategories } from "@/lib/cockpit/transfers-api";
 import type { Category } from "@/lib/cockpit/types";
 import { ImportDropzone } from "@/components/cockpit/import/ImportDropzone";
 import { ReviewTable } from "@/components/cockpit/import/ReviewTable";
+import { CategoryPickerSheet } from "@/components/cockpit/import/CategoryPickerSheet";
 
-type Row = ReviewRowData & { include: boolean; engagement?: boolean };
+type Row = ClassifiedRow & {
+  duplicate: boolean;
+  include: boolean;
+  engagement?: boolean;
+};
 
 export default function ImportPage() {
   const user = useAuth();
@@ -55,6 +70,10 @@ export default function ImportPage() {
   const [accountId, setAccountId] = useState("");
   const [error, setError] = useState("");
   const [importing, setImporting] = useState(false);
+  const [guessOnly, setGuessOnly] = useState(false);
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [pickerFor, setPickerFor] = useState<number | "bulk" | null>(null);
+  const [notice, setNotice] = useState("");
 
   const handleFile = async (file: File) => {
     setError("");
@@ -118,6 +137,59 @@ export default function ImportPage() {
     setRows((rs) =>
       rs ? rs.map((r, idx) => (idx === i ? { ...r, engagement: v } : r)) : rs
     );
+
+  const toggleSelected = (i: number, v: boolean) =>
+    setSelected((s) => {
+      const next = new Set(s);
+      if (v) next.add(i);
+      else next.delete(i);
+      return next;
+    });
+
+  const selectAllVisible = () =>
+    setSelected(
+      new Set(
+        (rows ?? [])
+          .map((r, i) => ({ r, i }))
+          .filter(({ r }) => (guessOnly ? r.provenance === "guess" : true))
+          .map(({ i }) => i)
+      )
+    );
+
+  const pickCategory = async (name: string) => {
+    if (!rows || pickerFor === null) return;
+    const cat = categories.find((c) => c.name === name);
+    if (pickerFor === "bulk") {
+      const next = applyCategoryToSelection(rows, selected, name);
+      setRows(next);
+      if (cat) {
+        const newRules = rulesFromSelection(rows, selected, cat.id);
+        try {
+          await setCategoryRules(user.id, newRules);
+          refetchRules();
+          setNotice(bulkSummary(selected.size, newRules.length, name));
+        } catch (e) {
+          setError(e instanceof Error ? e.message : "Erreur");
+        }
+      }
+      setSelected(new Set());
+    } else {
+      const i = pickerFor;
+      const key = rows[i].payeeKey;
+      setRows((rs) =>
+        rs ? rs.map((r) => (r.payeeKey === key ? { ...r, categoryName: name } : r)) : rs
+      );
+      if (cat && key) {
+        try {
+          await setCategoryRule(user.id, key, cat.id);
+          refetchRules();
+        } catch (e) {
+          setError(e instanceof Error ? e.message : "Erreur");
+        }
+      }
+    }
+    setPickerFor(null);
+  };
 
   const doImport = async () => {
     if (!rows) return;
@@ -199,6 +271,7 @@ export default function ImportPage() {
           <p className="text-ink-muted text-sm">Chargement des catégories…</p>
         ))}
       {error && <p className="text-strat-a text-sm mt-4">{error}</p>}
+      {notice && <p className="text-[13px] text-emerald mb-3">{notice}</p>}
 
       {rows && (
         <ReviewTable
@@ -213,6 +286,23 @@ export default function ImportPage() {
           importing={importing}
           engagementKeys={engagementKeys}
           onToggleEngagement={setEngagement}
+          guessOnly={guessOnly}
+          onGuessOnly={setGuessOnly}
+          selected={selected}
+          onToggleSelected={toggleSelected}
+          onSelectAllVisible={selectAllVisible}
+          onClearSelection={() => setSelected(new Set())}
+          onOpenPicker={(i) => setPickerFor(i)}
+          onBulkPick={() => setPickerFor("bulk")}
+        />
+      )}
+
+      {pickerFor !== null && (
+        <CategoryPickerSheet
+          categories={categories}
+          title={pickerFor === "bulk" ? `Catégoriser ${selected.size} lignes` : "Choisir la catégorie"}
+          onPick={pickCategory}
+          onClose={() => setPickerFor(null)}
         />
       )}
     </main>
