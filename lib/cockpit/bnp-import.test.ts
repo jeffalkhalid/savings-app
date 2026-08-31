@@ -35,6 +35,8 @@ describe("parseBnpSheet", () => {
       amount: -300,
       bnpCategory: "À catégoriser",
       bnpSubCategory: "Virement émis",
+      shortLabel: "",
+      operationType: "",
     });
     expect(second.amount).toBeCloseTo(-149.99);
   });
@@ -68,5 +70,88 @@ describe("rowKey / markDuplicates", () => {
     expect(reviewed[0].categoryName).toBe("Virements");
     expect(reviewed[1].duplicate).toBe(false);
     expect(reviewed[1].categoryName).toBe("Sport & Bien-être");
+  });
+});
+
+const sheet13Mois: string[][] = [
+  ["Compte de chèques", "Compte de chèques", "****8172", "28/08/2026", "", "3546.30"],
+  ["", "", "", "", "", ""],
+  [
+    "Date operation",
+    "Libelle court",
+    "Type operation",
+    "Libelle operation",
+    "Montant operation en euro",
+    "",
+  ],
+  [
+    "07/08/2025",
+    "PAIEMENT CB",
+    "FACTURE CARTE",
+    "FACTURE CARTE DU 050825 ELIOR ENTRETRIS CARTE   4974XXXXXXXX4402                FRA    20,00EUR",
+    "-20.00",
+    "",
+  ],
+  [
+    "08/08/2025",
+    "PRELEVEMENT",
+    "PRLV SEPA",
+    "PRLV SEPA CARREFOUR BANQUE ECH/080825 ID EMETTEUR/FR83ZZZ135674 MDT/CS00-51272097231100 REF/X LIB/Y",
+    "-22.41",
+    "",
+  ],
+];
+
+describe("parseBnpSheet — export 13 mois", () => {
+  it("parse les dates à slashes", () => {
+    const rows = parseBnpSheet(sheet13Mois);
+    expect(rows).toHaveLength(2);
+    expect(rows[0].date).toBe("2025-08-07");
+  });
+
+  it("lit le libellé et le montant par nom de colonne", () => {
+    const [first] = parseBnpSheet(sheet13Mois);
+    expect(first.label).toContain("ELIOR ENTRETRIS");
+    expect(first.amount).toBeCloseTo(-20);
+  });
+
+  it("remplit shortLabel et operationType", () => {
+    const [first] = parseBnpSheet(sheet13Mois);
+    expect(first.shortLabel).toBe("PAIEMENT CB");
+    expect(first.operationType).toBe("FACTURE CARTE");
+  });
+
+  it("laisse les catégories BNP vides quand l'export ne les fournit pas", () => {
+    const [first] = parseBnpSheet(sheet13Mois);
+    expect(first.bnpCategory).toBe("");
+    expect(first.bnpSubCategory).toBe("");
+  });
+
+  it("renvoie [] si une colonne obligatoire manque", () => {
+    const sansMontant = [
+      ["Date operation", "Libelle operation"],
+      ["07/08/2025", "X"],
+    ];
+    expect(parseBnpSheet(sansMontant)).toEqual([]);
+  });
+
+  it("ne dépend pas de l'ordre des colonnes", () => {
+    const inverse: string[][] = [
+      ["Montant operation en euro", "Libelle operation", "Date operation"],
+      ["-20.00", "FACTURE CARTE DU 050825 ELIOR ENTRETRIS CARTE 4974", "07/08/2025"],
+    ];
+    const rows = parseBnpSheet(inverse);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].amount).toBeCloseTo(-20);
+    expect(rows[0].date).toBe("2025-08-07");
+  });
+});
+
+describe("parseBnpSheet — l'ancien format reste supporté", () => {
+  it("remplit shortLabel et operationType avec des chaînes vides", () => {
+    const [first] = parseBnpSheet(sheet);
+    expect(first.shortLabel).toBe("");
+    expect(first.operationType).toBe("");
+    expect(first.bnpCategory).toBe("À catégoriser");
   });
 });

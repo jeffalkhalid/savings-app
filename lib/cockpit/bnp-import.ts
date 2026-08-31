@@ -4,6 +4,8 @@ export type ParsedRow = {
   amount: number; // signé
   bnpCategory: string;
   bnpSubCategory: string;
+  shortLabel: string;
+  operationType: string;
 };
 
 export type ReviewRow = ParsedRow & {
@@ -49,7 +51,7 @@ export function mapBnpCategory(category: string, subCategory: string): string {
 }
 
 function toISODate(s: string): string {
-  const m = String(s).trim().match(/^(\d{2})-(\d{2})-(\d{4})$/);
+  const m = String(s).trim().match(/^(\d{2})[-/](\d{2})[-/](\d{4})$/);
   return m ? `${m[3]}-${m[2]}-${m[1]}` : "";
 }
 
@@ -57,25 +59,61 @@ function toAmount(s: string): number {
   return parseFloat(String(s).replace(/\s/g, "").replace(",", "."));
 }
 
+type ColumnIndex = {
+  date: number;
+  label: number;
+  amount: number;
+  bnpCategory: number;
+  bnpSubCategory: number;
+  shortLabel: number;
+  operationType: number;
+};
+
+/** Repère les colonnes par leur en-tête, pour survivre aux changements de format BNP. */
+function findColumns(header: string[]): ColumnIndex | null {
+  const at = (pred: (h: string) => boolean): number =>
+    header.findIndex((c) => pred(norm(c)));
+
+  const cols: ColumnIndex = {
+    date: at((h) => h === "date operation"),
+    label: at((h) => h === "libelle operation"),
+    amount: at((h) => h.startsWith("montant operation")),
+    bnpCategory: at((h) => h === "categorie operation"),
+    bnpSubCategory: at((h) => h === "sous categorie operation"),
+    shortLabel: at((h) => h === "libelle court"),
+    operationType: at((h) => h === "type operation"),
+  };
+  if (cols.date === -1 || cols.label === -1 || cols.amount === -1) return null;
+  return cols;
+}
+
+const cell = (r: string[], i: number): string =>
+  i >= 0 ? String(r[i] ?? "").trim() : "";
+
 export function parseBnpSheet(rows: string[][]): ParsedRow[] {
   const headerIdx = rows.findIndex(
     (r) => Array.isArray(r) && r.some((c) => norm(c) === "date operation")
   );
   if (headerIdx === -1) return [];
 
+  const cols = findColumns(rows[headerIdx]);
+  if (!cols) return [];
+
   const out: ParsedRow[] = [];
   for (let i = headerIdx + 1; i < rows.length; i++) {
     const r = rows[i];
-    if (!Array.isArray(r) || r.length < 5) continue;
-    const date = toISODate(String(r[0] ?? ""));
-    const amount = toAmount(String(r[4] ?? ""));
+    if (!Array.isArray(r)) continue;
+    const date = toISODate(cell(r, cols.date));
+    const amount = toAmount(cell(r, cols.amount));
     if (!date || !isFinite(amount)) continue;
     out.push({
       date,
-      label: String(r[3] ?? "").trim(),
+      label: cell(r, cols.label),
       amount,
-      bnpCategory: String(r[1] ?? "").trim(),
-      bnpSubCategory: String(r[2] ?? "").trim(),
+      bnpCategory: cell(r, cols.bnpCategory),
+      bnpSubCategory: cell(r, cols.bnpSubCategory),
+      shortLabel: cell(r, cols.shortLabel),
+      operationType: cell(r, cols.operationType),
     });
   }
   return out;
