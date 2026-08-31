@@ -17,7 +17,6 @@ export function ReviewTable({
   accounts,
   accountId,
   onAccount,
-  onCategory,
   onToggleInclude,
   onImport,
   importing,
@@ -37,7 +36,6 @@ export function ReviewTable({
   accounts: Account[];
   accountId: string;
   onAccount: (id: string) => void;
-  onCategory: (index: number, name: string) => void;
   onToggleInclude: (index: number, v: boolean) => void;
   onImport: () => void;
   importing: boolean;
@@ -106,7 +104,6 @@ export function ReviewTable({
             selected={selected.has(i)}
             onToggleSelected={(v) => onToggleSelected(i, v)}
             onOpenPicker={() => onOpenPicker(i)}
-            onCategory={(name) => onCategory(i, name)}
             onToggleInclude={(v) => onToggleInclude(i, v)}
             engagementKnown={
               r.amount < 0 &&

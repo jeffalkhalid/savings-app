@@ -125,10 +125,6 @@ export default function ImportPage() {
     }
   };
 
-  const setCategory = (i: number, name: string) =>
-    setRows((rs) =>
-      rs ? rs.map((r, idx) => (idx === i ? { ...r, categoryName: name } : r)) : rs
-    );
   const setInclude = (i: number, v: boolean) =>
     setRows((rs) =>
       rs ? rs.map((r, idx) => (idx === i ? { ...r, include: v } : r)) : rs
@@ -146,15 +142,36 @@ export default function ImportPage() {
       return next;
     });
 
+  /** Le seul filtre de la revue : centralisé pour que sélection et "tout sélectionner" restent d'accord. */
+  const matchesFilter = (r: Row, guessOnlyValue: boolean) =>
+    guessOnlyValue ? r.provenance === "guess" : true;
+
   const selectAllVisible = () =>
     setSelected(
       new Set(
         (rows ?? [])
           .map((r, i) => ({ r, i }))
-          .filter(({ r }) => (guessOnly ? r.provenance === "guess" : true))
+          .filter(({ r }) => matchesFilter(r, guessOnly))
           .map(({ i }) => i)
       )
     );
+
+  /**
+   * Change le filtre et purge la sélection des lignes qui deviennent invisibles :
+   * sans ça, "sélectionnées" pourrait désigner des lignes que l'utilisateur ne voit plus,
+   * et « Catégoriser » agirait sur des lignes hors écran sans avertissement.
+   */
+  const setGuessOnlyFiltered = (v: boolean) => {
+    setGuessOnly(v);
+    setSelected((s) => {
+      if (!rows) return s;
+      const next = new Set<number>();
+      for (const i of s) {
+        if (matchesFilter(rows[i], v)) next.add(i);
+      }
+      return next;
+    });
+  };
 
   const pickCategory = async (name: string) => {
     if (!rows || pickerFor === null) return;
@@ -252,6 +269,10 @@ export default function ImportPage() {
     }
   };
 
+  // Calculé une seule fois et partagé entre la table et la feuille de choix,
+  // pour que les deux ne puissent jamais lister des catégories archivées différemment.
+  const activeCategories = categories.filter((c) => c.active !== false);
+
   return (
     <main className="max-w-[600px] mx-auto px-5 pt-8">
       <header className="flex justify-between items-center mb-6">
@@ -276,18 +297,17 @@ export default function ImportPage() {
       {rows && (
         <ReviewTable
           rows={rows}
-          categories={categories.filter((c) => c.active !== false)}
+          categories={activeCategories}
           accounts={accounts}
           accountId={accountId}
           onAccount={setAccountId}
-          onCategory={setCategory}
           onToggleInclude={setInclude}
           onImport={doImport}
           importing={importing}
           engagementKeys={engagementKeys}
           onToggleEngagement={setEngagement}
           guessOnly={guessOnly}
-          onGuessOnly={setGuessOnly}
+          onGuessOnly={setGuessOnlyFiltered}
           selected={selected}
           onToggleSelected={toggleSelected}
           onSelectAllVisible={selectAllVisible}
@@ -299,8 +319,12 @@ export default function ImportPage() {
 
       {pickerFor !== null && (
         <CategoryPickerSheet
-          categories={categories}
-          title={pickerFor === "bulk" ? `Catégoriser ${selected.size} lignes` : "Choisir la catégorie"}
+          categories={activeCategories}
+          title={
+            pickerFor === "bulk"
+              ? `Catégoriser ${selected.size} ligne${selected.size > 1 ? "s" : ""}`
+              : "Choisir la catégorie"
+          }
           onPick={pickCategory}
           onClose={() => setPickerFor(null)}
         />

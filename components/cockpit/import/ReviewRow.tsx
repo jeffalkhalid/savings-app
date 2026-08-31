@@ -29,7 +29,6 @@ export function ReviewRow({
   selected: boolean;
   onToggleSelected: (v: boolean) => void;
   onOpenPicker: () => void;
-  onCategory?: (name: string) => void;
   onToggleInclude: (v: boolean) => void;
   engagementKnown: boolean;
   engagement: boolean;
