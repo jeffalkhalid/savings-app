@@ -136,11 +136,16 @@ Table de devinettes (niveau 5) :
 
 | Type d'opération | Catégorie |
 |---|---|
-| `RETRAIT DAB` | Autres |
 | `COMMISSIONS` | Frais bancaires |
-| `PRLV SEPA` | Autres |
-| `FACTURE CARTE` | Courses alimentaires |
-| `CHEQUE`, `REMISE CHEQUES`, `VRST ESPECES AUTOMATE` | Autres |
+| tout le reste (`FACTURE CARTE`, `PRLV SEPA`, `RETRAIT DAB`, `CHEQUE`, `REMISE CHEQUES`, `VRST ESPECES AUTOMATE`, inconnu) | Autres |
+
+Le niveau 5 est donc volontairement **timide** : il ne devine que les frais bancaires, dont le
+libellé est sans ambiguïté, et verse tout le reste dans « Autres ». Un paiement carte chez un
+commerçant jamais vu n'est pas rangé dans une catégorie plausible-mais-fausse — décision de
+l'utilisateur, prise contre l'option « deviner par type d'opération » initialement envisagée : une
+dépense mal rangée fausse un budget en silence, alors qu'une dépense en « Autres » se voit.
+C'est ce qui rend l'automatisation maximale acceptable : le pire cas est une catégorie neutre,
+jamais une catégorie trompeuse.
 
 Chaque ligne repart avec `{ categoryName, provenance }`. La provenance n'est pas persistée en
 base : elle ne sert qu'à l'écran de revue, le temps de l'import.
@@ -226,5 +231,11 @@ payeeKey, categoryId)`, `deleteCategoryRule(userId, payeeKey)`.
 
 L'export 13 mois de l'utilisateur (996 lignes) s'importe sans erreur ; les 149 Carrefour Banque
 partent en Courses alimentaires, les 148 virements dans le tri de virements, les abonnements
-récurrents sont reconnus ; ce qui reste est identifiable par son badge « deviné » et corrigeable
-par commerçant. Après correction, un second import du même fichier ne redemande rien.
+récurrents sont reconnus ; ce qui reste atterrit en « Autres », identifiable par son badge
+« deviné » et corrigeable par commerçant d'un seul geste. Après correction, un second import du
+même fichier ne redemande rien.
+
+Corollaire assumé : au premier import, « Autres » sera gros. C'est voulu — il vaut mieux une
+catégorie visiblement à trier qu'un budget faussé sans qu'on le voie. Le filtre « devinettes
+seulement » existe précisément pour vider ce tas commerçant par commerçant, chaque correction
+valant pour toutes les lignes du même commerçant et pour tous les imports suivants.
