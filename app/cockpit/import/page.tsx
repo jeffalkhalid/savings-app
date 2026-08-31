@@ -3,11 +3,17 @@
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import * as XLSX from "xlsx";
-import { useAuth, useCategories, useAccounts, useRecurringCharges } from "@/lib/cockpit/hooks";
+import {
+  useAuth,
+  useCategories,
+  useAccounts,
+  useRecurringCharges,
+  useCategoryRules,
+  useAllTransactions,
+} from "@/lib/cockpit/hooks";
 import { supabase } from "@/lib/cockpit/supabase";
 import {
   parseBnpSheet,
-  markDuplicates,
   rowKey,
 } from "@/lib/cockpit/bnp-import";
 import type { ReviewRow as ReviewRowData } from "@/lib/cockpit/bnp-import";
@@ -15,12 +21,9 @@ import {
   createTransactionsBulk,
   type ImportRow,
 } from "@/lib/cockpit/transactions-api";
-import {
-  classifyTransfer,
-  targetCategoryName,
-} from "@/lib/cockpit/classify-transfer";
+import { classifyRows, buildHistoryMap, FALLBACK_CATEGORY } from "@/lib/cockpit/classify";
 import { createRecurringCharge } from "@/lib/cockpit/recurring-charges-api";
-import { normalizePayee } from "@/lib/cockpit/recurring-detect";
+import { merchantKey } from "@/lib/cockpit/payee-key";
 import { ensureTransferCategories } from "@/lib/cockpit/transfers-api";
 import type { Category } from "@/lib/cockpit/types";
 import { ImportDropzone } from "@/components/cockpit/import/ImportDropzone";
@@ -42,6 +45,8 @@ export default function ImportPage() {
   }, [liveCategories, user.id]);
   const { accounts } = useAccounts();
   const { charges } = useRecurringCharges();
+  const { rules, refetch: refetchRules } = useCategoryRules(user.id);
+  const { txns: allTxns } = useAllTransactions();
   const engagementKeys = useMemo(
     () => new Set(charges.map((c) => c.payee_key)),
     [charges]
@@ -81,17 +86,17 @@ export default function ImportPage() {
           )
         )
       );
-      const reviewed = markDuplicates(parsed, existing).map((r) =>
-        r.categoryName === "Virements"
-          ? {
-              ...r,
-              categoryName: targetCategoryName(
-                classifyTransfer(r.amount, r.label),
-                r.label
-              ),
-            }
-          : r
-      );
+      const categoryNameById = new Map(categories.map((c) => [c.id, c.name]));
+      const historyByKey = buildHistoryMap(allTxns, categoryNameById);
+      const classified = classifyRows(parsed, {
+        rulesByKey: rules,
+        categoryNameById,
+        historyByKey,
+      });
+      const reviewed = classified.map((c) => ({
+        ...c,
+        duplicate: existing.has(rowKey(c.date, c.amount)),
+      }));
       setRows(reviewed.map((r) => ({ ...r, include: !r.duplicate })));
       setAccountId(
         accounts.find((a) => a.name.includes("BNP"))?.id ?? accounts[0]?.id ?? ""
@@ -118,11 +123,14 @@ export default function ImportPage() {
     if (!rows) return;
     setError("");
     const importRows: ImportRow[] = [];
+    const unresolved: string[] = [];
     for (const r of rows.filter((x) => x.include)) {
-      const cat = categories.find((c) => c.name === r.categoryName);
+      const cat =
+        categories.find((c) => c.name === r.categoryName) ??
+        categories.find((c) => c.name === FALLBACK_CATEGORY);
       if (!cat) {
-        setError(`Catégorie non résolue : ${r.categoryName}`);
-        return;
+        unresolved.push(r.categoryName);
+        continue;
       }
       importRows.push({
         date: r.date,
@@ -133,13 +141,19 @@ export default function ImportPage() {
         accountId,
       });
     }
+    if (unresolved.length) {
+      setError(
+        `${unresolved.length} ligne(s) ignorée(s) : catégorie introuvable et « ${FALLBACK_CATEGORY} » absente de vos catégories.`
+      );
+    }
+    if (!importRows.length) return;
     setImporting(true);
     try {
       await createTransactionsBulk(user.id, importRows);
       const seen = new Set<string>();
       for (const r of rows.filter((x) => x.include && x.engagement && x.amount < 0)) {
         const payee = r.label || r.categoryName;
-        const key = normalizePayee(payee);
+        const key = merchantKey(payee);
         if (!key || engagementKeys.has(key) || seen.has(key)) continue;
         seen.add(key);
         await createRecurringCharge(user.id, {
@@ -148,6 +162,7 @@ export default function ImportPage() {
           expectedAmount: Math.abs(r.amount),
         });
       }
+      refetchRules();
       router.push("/cockpit");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur");
