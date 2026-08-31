@@ -359,6 +359,7 @@ export default function DashboardPage() {
           categories={categories}
           allTxns={allTxns}
           onCategoriesChanged={refetchCategories}
+          onSettingsChanged={refetchSettings}
           onClose={() => setShowSettings(false)}
           onSaved={() => {
             refetchSettings();

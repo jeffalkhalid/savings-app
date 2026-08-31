@@ -32,6 +32,7 @@ export function ReglagesModal({
   onClose,
   onSaved,
   onCategoriesChanged,
+  onSettingsChanged,
 }: {
   userId: string;
   settings: UserSettings;
@@ -40,6 +41,7 @@ export function ReglagesModal({
   onClose: () => void;
   onSaved: () => void;
   onCategoriesChanged: () => void;
+  onSettingsChanged: () => void;
 }) {
   const { pref, setPref } = useTheme();
   const [goalPct, setGoalPct] = useState(
@@ -242,7 +244,7 @@ export function ReglagesModal({
         allTxns={allTxns}
         onClose={() => setShowSalaryShift(false)}
         onSaved={() => {
-          onSaved();
+          onSettingsChanged();
           setShowSalaryShift(false);
         }}
       />

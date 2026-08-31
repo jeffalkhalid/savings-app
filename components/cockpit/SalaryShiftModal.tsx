@@ -37,6 +37,23 @@ export function SalaryShiftModal({
     [categories]
   );
 
+  /**
+   * Catégories affichées : les catégories de revenu actives, plus toute catégorie
+   * déjà cochée dans le brouillon même si elle a depuis été désactivée — sinon
+   * l'utilisateur ne pourrait pas la décocher.
+   */
+  const renderedCategories = useMemo(() => {
+    const activeIds = new Set(incomeCategories.map((c) => c.id));
+    const extras: Category[] = draft.categoryIds
+      .filter((id) => !activeIds.has(id))
+      .map(
+        (id) =>
+          categories.find((c) => c.id === id) ??
+          ({ id, name: id, type: "income", color: "", active: false } as Category)
+      );
+    return [...incomeCategories, ...extras];
+  }, [incomeCategories, categories, draft.categoryIds]);
+
   /** Payeurs candidats : les commerçants distincts des revenus de l'utilisateur. */
   const payeeOptions = useMemo(() => {
     const seen = new Map<string, { label: string; n: number }>();
@@ -52,6 +69,20 @@ export function SalaryShiftModal({
       .sort((a, b) => b[1].n - a[1].n)
       .map(([key, v]) => ({ key, label: v.label, n: v.n }));
   }, [allTxns]);
+
+  /**
+   * Payeurs affichés : les 20 plus fréquents, plus tout payeur déjà coché dans
+   * le brouillon même s'il tombe hors de ce top 20 (ou n'a plus d'opération
+   * correspondante) — sinon l'utilisateur ne pourrait pas le décocher.
+   */
+  const renderedPayees = useMemo(() => {
+    const top20 = payeeOptions.slice(0, 20);
+    const top20Keys = new Set(top20.map((p) => p.key));
+    const extras = draft.payeeKeys
+      .filter((k) => !top20Keys.has(k))
+      .map((k) => payeeOptions.find((p) => p.key === k) ?? { key: k, label: k, n: 0 });
+    return [...top20, ...extras];
+  }, [payeeOptions, draft.payeeKeys]);
 
   const preview = useMemo(
     () => allTxns.filter((t) => isShifted(t, draft)).length,
@@ -78,7 +109,7 @@ export function SalaryShiftModal({
 
   return (
     <div
-      className="fixed inset-0 z-[1000] bg-black/50 flex items-end justify-center"
+      className="fixed inset-0 z-[1001] bg-black/50 flex items-end justify-center"
       onClick={onClose}
     >
       <div
@@ -100,10 +131,10 @@ export function SalaryShiftModal({
         <form onSubmit={submit} className="grid gap-6">
           <section className="grid gap-2">
             <h3 className="text-[13px] font-semibold text-ink">Catégories</h3>
-            {incomeCategories.length === 0 && (
+            {renderedCategories.length === 0 && (
               <p className={labelCls}>Aucune catégorie de revenu.</p>
             )}
-            {incomeCategories.map((c) => (
+            {renderedCategories.map((c) => (
               <label key={c.id} className="flex items-center gap-2 text-[15px] text-ink">
                 <input
                   type="checkbox"
@@ -119,10 +150,10 @@ export function SalaryShiftModal({
 
           <section className="grid gap-2">
             <h3 className="text-[13px] font-semibold text-ink">Payeurs</h3>
-            {payeeOptions.length === 0 && (
+            {renderedPayees.length === 0 && (
               <p className={labelCls}>Aucun revenu dans l&apos;historique.</p>
             )}
-            {payeeOptions.slice(0, 20).map((p) => (
+            {renderedPayees.map((p) => (
               <label key={p.key} className="flex items-start gap-2 text-[15px] text-ink">
                 <input
                   type="checkbox"
