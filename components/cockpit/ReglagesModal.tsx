@@ -54,18 +54,31 @@ export function ReglagesModal({
   const rekey = async () => {
     setRekeying(true);
     setRekeyNote("");
+    let plan: { updates: { id: string; payeeKey: string }[]; deletes: string[] } | null =
+      null;
+    let deletesApplied = false;
+    let rekeyed = 0;
     try {
       const charges = await listAllRecurringCharges(userId);
-      const plan = planRekey(charges);
+      plan = planRekey(charges);
       await deleteRecurringCharges(plan.deletes);
+      deletesApplied = true;
       for (const u of plan.updates) {
         await updateRecurringChargeKey(u.id, u.payeeKey);
+        rekeyed++;
       }
       setRekeyNote(
         `${charges.length} engagement(s), ${plan.updates.length} re-clé(s), ${plan.deletes.length} fusionné(s).`
       );
     } catch (e) {
-      setRekeyNote(e instanceof Error ? e.message : "Erreur");
+      const msg = e instanceof Error ? e.message : "Erreur";
+      if (plan && deletesApplied) {
+        setRekeyNote(
+          `Migration interrompue après ${rekeyed} re-clé(s) sur ${plan.updates.length}, et ${plan.deletes.length} fusion(s) déjà appliquée(s). Relancez : l'opération reprend là où elle s'est arrêtée. (${msg})`
+        );
+      } else {
+        setRekeyNote(msg);
+      }
     }
     setRekeying(false);
   };

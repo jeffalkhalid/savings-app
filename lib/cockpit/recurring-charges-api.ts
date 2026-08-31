@@ -63,7 +63,8 @@ export async function listAllRecurringCharges(
   const { data, error } = await supabase
     .from("recurring_charges")
     .select("id,payee_key,label,expected_amount,created_at")
-    .eq("user_id", userId);
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
   if (error) throw new Error(error.message);
   return (data as RecurringChargeRow[]) ?? [];
 }
