@@ -206,6 +206,41 @@ payeeKey, categoryId)`, `deleteCategoryRule(userId, payeeKey)`.
   lignes Carrefour Banque corrigeables d'un geste.
 - Le reste de l'écran (doublons, inclusion, engagements, choix du compte) est inchangé.
 
+### 7.1 Sélection multiple et catégorisation en masse
+
+- **Case de sélection par ligne**, visuellement distincte de la case « inclure » existante : la
+  sélection dit « j'agis sur ces lignes », l'inclusion dit « j'importe ces lignes ». Deux colonnes
+  séparées, libellées, jamais deux cases nues côte à côte.
+- **« Tout sélectionner »** en tête de tableau, qui porte sur les lignes **actuellement visibles**,
+  filtre appliqué. Combiné au filtre « devinettes seulement », c'est le geste central : filtrer,
+  tout sélectionner, assigner.
+- Dès qu'une ligne est sélectionnée, une **barre d'action** apparaît en bas d'écran (sticky) :
+  « N sélectionnées », un choix de catégorie, un bouton « Appliquer », un bouton « Désélectionner ».
+- Appliquer une catégorie à la sélection **crée une règle par `merchantKey` distinct** qu'elle
+  contient, et le compte rendu le dit explicitement : « 47 lignes classées en Restaurants &
+  Sorties, 12 règles créées ». L'utilisateur doit savoir qu'il vient d'enseigner 12 commerçants à
+  l'app, pas seulement de ranger 47 lignes.
+- La sélection est vidée après application.
+
+### 7.2 Tenue de charge de l'écran
+
+`ReviewTable` rend aujourd'hui **toutes** les lignes d'un coup, chacune portant son propre
+`<select>` de catégories. À 996 opérations et une vingtaine de catégories, cela représente près de
+20 000 nœuds DOM : l'écran a été conçu pour un import mensuel d'une cinquantaine de lignes. Sans
+traitement, la sélection multiple serait inutilisable sur mobile — et l'app est une PWA.
+
+Deux mesures, nécessaires au fonctionnement de §7.1 :
+
+1. **Plus de `<select>` par ligne.** La ligne affiche sa catégorie comme un bouton ; le choix se
+   fait dans une feuille partagée, un seul contrôle dans le DOM au lieu de 996. C'est aussi plus
+   proche du reste de l'app, qui utilise déjà des bottom-sheets partout.
+2. **Affichage par tranches** : 100 lignes, puis un bouton « Afficher 100 de plus », le filtre et
+   « Tout sélectionner » portant sur l'ensemble filtré et non sur la seule tranche affichée — sans
+   quoi « tout sélectionner » mentirait sur ce qu'il sélectionne.
+
+Ce point est un **prérequis**, pas une amélioration : il conditionne l'utilisabilité de la
+fonctionnalité demandée sur le volume qui l'a motivée.
+
 ## 8. Hors périmètre
 
 - **Rattachement du salaire au mois suivant.** Le salaire tombe le dernier jour ouvré et devrait
@@ -224,6 +259,10 @@ payeeKey, categoryId)`, `deleteCategoryRule(userId, payeeKey)`.
   (en-têtes 13 mois, dates à slashes, colonnes catégorie absentes).
 - `classify.test.ts` : priorité de la cascade (une règle bat l'historique, l'historique bat la
   devinette), provenance correcte, repli sur « Autres » quand le nom ne résout pas.
+- Sélection en masse : module pur pour la logique de sélection (appliquer une catégorie à un
+  ensemble de lignes, en déduire les `merchantKey` distincts à transformer en règles), testé
+  indépendamment de l'UI — notamment le cas où la sélection contient plusieurs lignes d'un même
+  commerçant (une seule règle) et le cas où le filtre restreint « tout sélectionner ».
 - Migration des engagements : test pur sur la fonction de fusion (collisions, idempotence).
 - `npx tsc --noEmit`, `npm run test`, `npm run build`.
 
