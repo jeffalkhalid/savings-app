@@ -69,13 +69,25 @@ export default function CommercantsPage() {
       active ? "bg-accent text-[#FBF3EC]" : "bg-seg text-ink-muted"
     }`;
 
+  // Ouvrir/fermer la fiche remet la recherche interne à zéro : sans ça, une
+  // recherche laissée dans la fiche d'un commerçant fuit vers le suivant, et
+  // son total affiché ne correspond plus à celui du classement.
+  const openMerchant = (key: string) => {
+    setSelectedKey(key);
+    setDrillQuery("");
+  };
+  const closeMerchant = () => {
+    setSelectedKey(null);
+    setDrillQuery("");
+  };
+
   return (
     <main className="max-w-[600px] mx-auto px-5 pt-8 pb-24">
       {selected ? (
         <>
           <MerchantSeriesBars series={series} />
           <OpsDrill
-            mode="all"
+            mode="category"
             title={selected.label}
             Icon={Store}
             txns={selectedTxns}
@@ -85,7 +97,7 @@ export default function CommercantsPage() {
             chip={null}
             onChip={() => {}}
             onSelectTxn={() => {}}
-            onBack={() => setSelectedKey(null)}
+            onBack={closeMerchant}
             onBulkCategorise={bulk.start}
           />
         </>
@@ -126,7 +138,7 @@ export default function CommercantsPage() {
             />
           </div>
 
-          <MerchantList merchants={shown} onSelect={setSelectedKey} />
+          {!loading && <MerchantList merchants={shown} onSelect={openMerchant} />}
         </>
       )}
 
