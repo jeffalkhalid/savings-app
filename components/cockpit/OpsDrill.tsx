@@ -3,7 +3,13 @@
 import { eur } from "@/lib/cockpit/format";
 import { filterTxns } from "@/lib/cockpit/txn-filter";
 import type { Txn, Category } from "@/lib/cockpit/types";
-import { SearchX, CheckSquare, type LucideIcon } from "lucide-react";
+import {
+  SearchX,
+  CheckSquare,
+  ChevronDown,
+  ChevronUp,
+  type LucideIcon,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { BulkBar } from "@/components/cockpit/BulkBar";
 
@@ -38,6 +44,15 @@ export function OpsDrill({
 }) {
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  const toggleExpanded = (id: string) =>
+    setExpanded((s) => {
+      const next = new Set(s);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
 
   const toggle = (id: string) =>
     setSelected((s) => {
@@ -161,12 +176,14 @@ export function OpsDrill({
       {shown.map((t) => {
         const amt = Number(t.amount);
         const shiftedTo = shiftedLabelOf?.(t);
+        const isOpen = expanded.has(t.id);
+        // Les libellés bancaires dépassent largement la largeur d'un téléphone ;
+        // on ne propose le dépliage que là où il y a vraiment à lire.
+        const isLong = t.description.length > 38;
         return (
-          <button
+          <div
             key={t.id}
-            type="button"
-            onClick={() => (selecting ? toggle(t.id) : onSelectTxn(t))}
-            className="w-full text-left flex justify-between items-center gap-2.5 py-2.5 border-b border-rule"
+            className="flex justify-between items-center gap-2.5 py-2.5 border-b border-rule"
           >
             {selecting && (
               <input
@@ -176,15 +193,21 @@ export function OpsDrill({
                 className="shrink-0"
               />
             )}
-            <div className="min-w-0">
-              <div className="text-sm truncate">{t.description}</div>
+            <button
+              type="button"
+              onClick={() => (selecting ? toggle(t.id) : onSelectTxn(t))}
+              className="min-w-0 flex-1 text-left"
+            >
+              <div className={`text-sm ${isOpen ? "break-words" : "truncate"}`}>
+                {t.description}
+              </div>
               <div className="text-[11.5px] text-ink-muted mt-0.5">
                 {fmtDate(t.date)}
                 {shiftedTo && (
                   <span className="text-accent"> · rattaché à {shiftedTo}</span>
                 )}
               </div>
-            </div>
+            </button>
             <span
               className={`font-mono-num text-sm shrink-0 ${
                 amt < 0 ? "text-accent" : "text-emerald"
@@ -192,7 +215,19 @@ export function OpsDrill({
             >
               {eur(amt)}
             </span>
-          </button>
+            {isLong && (
+              <button
+                type="button"
+                aria-label={
+                  isOpen ? "Réduire le libellé" : "Afficher le libellé complet"
+                }
+                onClick={() => toggleExpanded(t.id)}
+                className="shrink-0 text-ink-muted p-1"
+              >
+                {isOpen ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+              </button>
+            )}
+          </div>
         );
       })}
 
