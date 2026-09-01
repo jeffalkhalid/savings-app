@@ -8,12 +8,14 @@ export function CategoryBreakdown({
   onSelect,
   onEditBudgets,
   onOpenMerchants,
+  onOpenEvolution,
 }: {
   insights: CategoryInsight[];
   budgets: Record<string, number>;
   onSelect: (categoryId: string) => void;
   onEditBudgets: () => void;
   onOpenMerchants: () => void;
+  onOpenEvolution: () => void;
 }) {
   const budgetOf = (id: string) => budgets[id] ?? null;
   return (
@@ -21,6 +23,13 @@ export function CategoryBreakdown({
       <div className="flex justify-between items-baseline mb-1">
         <div className="font-display text-[15px]">Par catégorie</div>
         <div className="flex items-baseline gap-3">
+          <button
+            type="button"
+            onClick={onOpenEvolution}
+            className="text-[12px] text-ink-muted"
+          >
+            Évolution
+          </button>
           <button
             type="button"
             onClick={onOpenMerchants}
