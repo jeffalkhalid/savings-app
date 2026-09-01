@@ -64,9 +64,17 @@ export async function updateTransactionsCategory(
   type: string
 ): Promise<void> {
   if (!ids.length) return;
+  // `goal_id` suit la même règle que partout ailleurs (voir `row()` et
+  // TxnModal) : une transaction qui n'est plus de l'épargne ne doit plus
+  // alimenter la progression d'un objectif. Sans ça, elle y resterait comptée
+  // en silence. On ne touche pas au lien quand la cible EST de l'épargne.
+  const patch =
+    type === "savings"
+      ? { category_id: categoryId, type }
+      : { category_id: categoryId, type, goal_id: null };
   const { error } = await supabase
     .from("transactions")
-    .update({ category_id: categoryId, type })
+    .update(patch)
     .in("id", ids);
   if (error) throw new Error(error.message);
 }

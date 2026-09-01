@@ -82,6 +82,7 @@ export default function DashboardPage() {
   const [drill, setDrill] = useState<Drill>(null);
   const [bulkTxns, setBulkTxns] = useState<Txn[] | null>(null);
   const [bulkNote, setBulkNote] = useState("");
+  const [bulkNoteError, setBulkNoteError] = useState(false);
   const [query, setQuery] = useState("");
   const [chip, setChip] = useState<string | null>(null);
   const [showFixed, setShowFixed] = useState(false);
@@ -152,18 +153,31 @@ export default function DashboardPage() {
     const cat = categories.find((c) => c.name === name);
     setBulkTxns(null);
     if (!cat || !picked.length) return;
+    setBulkNoteError(false);
+    let moved = false;
     try {
       await updateTransactionsCategory(
         picked.map((t) => t.id),
         cat.id,
         cat.type
       );
+      moved = true;
       const newRules = rulesFromTxns(picked, cat.id);
       await setCategoryRules(user.id, newRules);
       setBulkNote(bulkSummary(picked.length, newRules.length, cat.name));
-      refetch();
     } catch (e) {
-      setBulkNote(e instanceof Error ? e.message : "Erreur");
+      const msg = e instanceof Error ? e.message : "Erreur";
+      // Distinguer les deux échecs : si les opérations sont déjà reclassées,
+      // le dire, sinon l'utilisateur croit que rien n'a bougé et recommence.
+      setBulkNote(
+        moved
+          ? `Opérations reclassées, mais la règle n'a pas pu être enregistrée : ${msg}`
+          : msg
+      );
+      setBulkNoteError(true);
+    } finally {
+      // Rafraîchir dans tous les cas : la base a pu changer même en erreur.
+      refetch();
     }
   };
   const shiftedLabelOf = useCallback(
@@ -443,7 +457,13 @@ export default function DashboardPage() {
         />
       )}
       {bulkNote && (
-        <p className="text-[13px] text-emerald mb-3">{bulkNote}</p>
+        <p
+          className={`text-[13px] mb-3 ${
+            bulkNoteError ? "text-accent" : "text-emerald"
+          }`}
+        >
+          {bulkNote}
+        </p>
       )}
       {bulkTxns && (
         <CategoryPickerSheet
