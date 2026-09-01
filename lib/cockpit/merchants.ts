@@ -72,3 +72,26 @@ export function merchantSeries(
     .map(([month, total]) => ({ month, total }))
     .sort((a, b) => (a.month < b.month ? -1 : a.month > b.month ? 1 : 0));
 }
+
+export type MerchantSortKey = "total" | "count" | "lastDate";
+export type SortDir = "asc" | "desc";
+
+/**
+ * Trie un classement de commerçants sans muter l'entrée.
+ *
+ * Le tri par nombre d'opérations révèle les petites dépenses répétées qu'un
+ * tri par montant enterre ; le tri par date fait remonter ce qui est actif.
+ */
+export function sortMerchants(
+  stats: MerchantStat[],
+  key: MerchantSortKey,
+  dir: SortDir
+): MerchantStat[] {
+  const sign = dir === "asc" ? 1 : -1;
+  return [...stats].sort((a, b) => {
+    if (key === "lastDate") {
+      return a.lastDate < b.lastDate ? -sign : a.lastDate > b.lastDate ? sign : 0;
+    }
+    return (a[key] - b[key]) * sign;
+  });
+}

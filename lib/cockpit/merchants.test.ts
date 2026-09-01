@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { aggregateByMerchant, merchantSeries } from "./merchants";
+import {
+  aggregateByMerchant,
+  merchantSeries,
+  sortMerchants,
+} from "./merchants";
+import type { MerchantStat } from "./merchants";
 import type { Txn } from "./types";
 
 const t = (
@@ -100,5 +105,60 @@ describe("merchantSeries", () => {
 
   it("rend une série vide pour un commerçant inconnu", () => {
     expect(merchantSeries([t("1", "2026-08-05", -20, ELIOR_A)], "inconnu")).toEqual([]);
+  });
+});
+
+describe("sortMerchants", () => {
+  const stats: MerchantStat[] = [
+    { key: "b", label: "B", total: 100, count: 2, lastDate: "2026-05-01" },
+    { key: "a", label: "A", total: 300, count: 1, lastDate: "2026-01-01" },
+    { key: "c", label: "C", total: 200, count: 9, lastDate: "2026-09-01" },
+  ];
+
+  it("trie par montant décroissant", () => {
+    expect(sortMerchants(stats, "total", "desc").map((m) => m.key)).toEqual([
+      "a",
+      "c",
+      "b",
+    ]);
+  });
+
+  it("trie par montant croissant", () => {
+    expect(sortMerchants(stats, "total", "asc").map((m) => m.key)).toEqual([
+      "b",
+      "c",
+      "a",
+    ]);
+  });
+
+  it("trie par nombre d'opérations", () => {
+    expect(sortMerchants(stats, "count", "desc").map((m) => m.key)).toEqual([
+      "c",
+      "b",
+      "a",
+    ]);
+  });
+
+  it("trie par date de dernière opération", () => {
+    expect(sortMerchants(stats, "lastDate", "desc").map((m) => m.key)).toEqual([
+      "c",
+      "b",
+      "a",
+    ]);
+    expect(sortMerchants(stats, "lastDate", "asc").map((m) => m.key)).toEqual([
+      "a",
+      "b",
+      "c",
+    ]);
+  });
+
+  it("ne mute pas le tableau d'entrée", () => {
+    const before = stats.map((m) => m.key);
+    sortMerchants(stats, "count", "asc");
+    expect(stats.map((m) => m.key)).toEqual(before);
+  });
+
+  it("rend une liste vide pour une entrée vide", () => {
+    expect(sortMerchants([], "total", "desc")).toEqual([]);
   });
 });

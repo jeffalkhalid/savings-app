@@ -1,10 +1,15 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Store } from "lucide-react";
+import { Store, ArrowDown, ArrowUp } from "lucide-react";
 import Link from "next/link";
 import { useAllTransactions, useAuth, useCategories } from "@/lib/cockpit/hooks";
-import { aggregateByMerchant, merchantSeries } from "@/lib/cockpit/merchants";
+import {
+  aggregateByMerchant,
+  merchantSeries,
+  sortMerchants,
+} from "@/lib/cockpit/merchants";
+import type { MerchantSortKey, SortDir } from "@/lib/cockpit/merchants";
 import { merchantKey } from "@/lib/cockpit/payee-key";
 import { useBulkRecategorise } from "@/lib/cockpit/use-bulk-recategorise";
 import { MerchantList } from "@/components/cockpit/MerchantList";
@@ -13,6 +18,12 @@ import { CategoryPickerSheet } from "@/components/cockpit/CategoryPickerSheet";
 import { OpsDrill } from "@/components/cockpit/OpsDrill";
 import { eur } from "@/lib/cockpit/format";
 import type { TxnType } from "@/lib/cockpit/types";
+
+const SORTS: { v: MerchantSortKey; label: string }[] = [
+  { v: "total", label: "montant" },
+  { v: "count", label: "opérations" },
+  { v: "lastDate", label: "date" },
+];
 
 const TYPES: { v: TxnType | "all"; label: string }[] = [
   { v: "all", label: "Tout" },
@@ -28,6 +39,18 @@ export default function CommercantsPage() {
   const { categories } = useCategories();
   const [type, setType] = useState<TxnType | "all">("all");
   const [query, setQuery] = useState("");
+  const [sortKey, setSortKey] = useState<MerchantSortKey>("total");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+
+  // Appuyer sur le critère actif inverse le sens ; en changer repart du plus
+  // parlant, c'est-à-dire du plus grand.
+  const pickSort = (k: MerchantSortKey) => {
+    if (k === sortKey) setSortDir((d) => (d === "desc" ? "asc" : "desc"));
+    else {
+      setSortKey(k);
+      setSortDir("desc");
+    }
+  };
   const [drillQuery, setDrillQuery] = useState("");
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
 
@@ -38,10 +61,11 @@ export default function CommercantsPage() {
   const merchants = useMemo(() => aggregateByMerchant(scoped), [scoped]);
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return q
+    const filtered = q
       ? merchants.filter((m) => m.label.toLowerCase().includes(q))
       : merchants;
-  }, [merchants, query]);
+    return sortMerchants(filtered, sortKey, sortDir);
+  }, [merchants, query, sortKey, sortDir]);
   const total = useMemo(
     () => shown.reduce((a, m) => a + m.total, 0),
     [shown]
@@ -156,6 +180,33 @@ export default function CommercantsPage() {
             )}
           </div>
 
+          <div className="flex items-center gap-3 mb-2 text-[12px]">
+            <span className="text-ink-muted">Trier par</span>
+            {SORTS.map((o) => {
+              const active = sortKey === o.v;
+              return (
+                <button
+                  key={o.v}
+                  type="button"
+                  onClick={() => pickSort(o.v)}
+                  aria-label={`Trier par ${o.label}${
+                    active ? (sortDir === "desc" ? ", décroissant" : ", croissant") : ""
+                  }`}
+                  className={`flex items-center gap-0.5 ${
+                    active ? "text-ink font-medium" : "text-ink-muted"
+                  }`}
+                >
+                  {o.label}
+                  {active &&
+                    (sortDir === "desc" ? (
+                      <ArrowDown size={13} />
+                    ) : (
+                      <ArrowUp size={13} />
+                    ))}
+                </button>
+              );
+            })}
+          </div>
           {!loading && <MerchantList merchants={shown} onSelect={openMerchant} />}
         </>
       )}
