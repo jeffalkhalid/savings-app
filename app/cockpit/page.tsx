@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   useAuth,
   useTransactions,
@@ -74,6 +75,7 @@ type Drill =
 
 export default function DashboardPage() {
   const user = useAuth();
+  const router = useRouter();
   const [month, setMonth] = useState(currentMonth());
   const [showAdd, setShowAdd] = useState(false);
   const [editTxn, setEditTxn] = useState<Txn | null>(null);
@@ -318,6 +320,7 @@ export default function DashboardPage() {
             budgets={budgets}
             onSelect={openCategory}
             onEditBudgets={() => setShowBudgets(true)}
+            onOpenMerchants={() => router.push("/cockpit/commercants")}
           />
         </>
       )}

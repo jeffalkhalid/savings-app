@@ -7,24 +7,35 @@ export function CategoryBreakdown({
   budgets,
   onSelect,
   onEditBudgets,
+  onOpenMerchants,
 }: {
   insights: CategoryInsight[];
   budgets: Record<string, number>;
   onSelect: (categoryId: string) => void;
   onEditBudgets: () => void;
+  onOpenMerchants: () => void;
 }) {
   const budgetOf = (id: string) => budgets[id] ?? null;
   return (
     <section>
       <div className="flex justify-between items-baseline mb-1">
         <div className="font-display text-[15px]">Par catégorie</div>
-        <button
-          type="button"
-          onClick={onEditBudgets}
-          className="text-[12px] text-ink-muted"
-        >
-          Budgets
-        </button>
+        <div className="flex items-baseline gap-3">
+          <button
+            type="button"
+            onClick={onOpenMerchants}
+            className="text-[12px] text-ink-muted"
+          >
+            Commerçants
+          </button>
+          <button
+            type="button"
+            onClick={onEditBudgets}
+            className="text-[12px] text-ink-muted"
+          >
+            Budgets
+          </button>
+        </div>
       </div>
       {!insights.length && (
         <p className="text-ink-muted text-sm py-4">Aucune dépense ce mois.</p>
