@@ -1,4 +1,5 @@
 import { eur } from "@/lib/cockpit/format";
+import { ExpandableLabel } from "@/components/cockpit/ExpandableLabel";
 import type { Category } from "@/lib/cockpit/types";
 import type { ReviewRow as ReviewRowData } from "@/lib/cockpit/bnp-import";
 import type { Provenance } from "@/lib/cockpit/classify";
@@ -52,7 +53,7 @@ export function ReviewRow({
           sél.
         </label>
         <div className="min-w-0 flex-1">
-          <div className="text-sm truncate">{row.label}</div>
+          <ExpandableLabel text={row.label} />
           <div className="text-[11px] text-ink-muted">
             {row.date}
             {row.duplicate ? " · doublon" : ""}

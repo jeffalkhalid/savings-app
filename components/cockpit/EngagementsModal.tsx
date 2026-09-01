@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ExpandableLabel } from "@/components/cockpit/ExpandableLabel";
 import { eur } from "@/lib/cockpit/format";
 import {
   createRecurringCharge,
@@ -83,7 +84,7 @@ export function EngagementsModal({
                   className="flex items-center gap-3 py-2 border-b border-rule"
                 >
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm truncate">{c.label}</div>
+                    <ExpandableLabel text={c.label} />
                     <div className="text-[11px] mt-0.5">
                       <span className={st.cls}>{st.label}</span>
                       {m?.driftPct != null && Math.abs(m.driftPct) > 0.15 && (
@@ -147,7 +148,7 @@ export function EngagementsModal({
               className="flex items-center gap-3 py-2 border-b border-rule"
             >
               <div className="flex-1 min-w-0">
-                <div className="text-sm truncate">{cand.label}</div>
+                <ExpandableLabel text={cand.label} />
                 <div className="text-[11px] text-ink-muted">
                   ~{eur(cand.expected)}/mois · {cand.monthsSeen} mois
                 </div>
