@@ -8,10 +8,8 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import { axisMonthLabel, tooltipMonthLabel } from "@/lib/cockpit/format";
 import type { MonthTotals } from "@/lib/cockpit/timeline";
-
-const shortMonth = (m: string) =>
-  new Date(`${m}-01T00:00:00`).toLocaleDateString("fr-FR", { month: "short" });
 
 /**
  * Le taux d'épargne a sa propre carte : superposé aux euros, il serait plat et
@@ -36,12 +34,12 @@ export function SavingsRateChart({ series }: { series: MonthTotals[] }) {
               tick={{ fontSize: 10, fill: "#9A8E7C" }}
               tickLine={false}
               axisLine={false}
-              tickFormatter={shortMonth}
+              tickFormatter={axisMonthLabel}
             />
             <YAxis hide />
             <Tooltip
               formatter={(v: number) => `${v} %`}
-              labelFormatter={(m: string) => shortMonth(m)}
+              labelFormatter={(m: string) => tooltipMonthLabel(m)}
             />
             <Line
               type="monotone"

@@ -9,11 +9,8 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-import { eur } from "@/lib/cockpit/format";
+import { eur, axisMonthLabel, tooltipMonthLabel } from "@/lib/cockpit/format";
 import type { Category } from "@/lib/cockpit/types";
-
-const shortMonth = (m: string) =>
-  new Date(`${m}-01T00:00:00`).toLocaleDateString("fr-FR", { month: "short" });
 
 export function CategoryChart({
   series,
@@ -37,12 +34,12 @@ export function CategoryChart({
               tick={{ fontSize: 10, fill: "#9A8E7C" }}
               tickLine={false}
               axisLine={false}
-              tickFormatter={shortMonth}
+              tickFormatter={axisMonthLabel}
             />
             <YAxis hide />
             <Tooltip
               formatter={(v: number) => eur(v)}
-              labelFormatter={(m: string) => shortMonth(m)}
+              labelFormatter={(m: string) => tooltipMonthLabel(m)}
             />
             <Legend wrapperStyle={{ fontSize: 11 }} />
             {categories.map((c) => (

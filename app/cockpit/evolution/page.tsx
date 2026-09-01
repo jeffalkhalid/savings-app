@@ -28,7 +28,8 @@ export default function EvolutionPage() {
   const user = useAuth();
   const { txns, loading } = useAllTransactions();
   const { categories } = useCategories();
-  const { settings } = useUserSettings(user.id);
+  const { settings, loaded: settingsLoaded } = useUserSettings(user.id);
+  const ready = !loading && settingsLoaded;
   const [vue, setVue] = useState<Vue>("ensemble");
   const [picked, setPicked] = useState<string[] | null>(null);
 
@@ -80,7 +81,7 @@ export default function EvolutionPage() {
         </Link>
         <h1 className="font-display text-2xl mt-2">Évolution</h1>
         <p className="text-[13px] text-ink-muted mt-1">
-          {loading ? (
+          {!ready ? (
             "Chargement…"
           ) : (
             <>
@@ -106,52 +107,57 @@ export default function EvolutionPage() {
         ))}
       </div>
 
-      {!loading && totals.length < 2 && (
+      {ready && totals.length < 2 && (
         <p className="text-[13px] text-ink-muted">
           Il faut au moins deux mois d&apos;historique pour tracer une évolution.
         </p>
       )}
 
-      {vue === "ensemble" ? (
-        <>
-          <TimelineChart series={totals} />
-          <SavingsRateChart series={totals} />
-        </>
-      ) : (
-        <>
-          {selectedIds.length === 0 ? (
-            <p className="text-[13px] text-ink-muted mb-4">
-              Aucune catégorie sélectionnée.
-            </p>
-          ) : catSeries.length < 2 ? (
-            <p className="text-[13px] text-ink-muted mb-4">
-              Pas assez d&apos;historique sur cette sélection pour tracer une
-              évolution.
-            </p>
-          ) : (
-            <CategoryChart series={catSeries} categories={selectedCats} />
-          )}
-          <div className="grid gap-1.5">
-            {offered.map((c) => (
-              <label
-                key={c.id}
-                className="flex items-center gap-2 text-[15px] text-ink"
-              >
-                <input
-                  type="checkbox"
-                  checked={selectedIds.includes(c.id)}
-                  onChange={() => toggle(c.id)}
-                />
-                <span
-                  className="w-2.5 h-2.5 rounded-full shrink-0"
-                  style={{ backgroundColor: c.color }}
-                />
-                {c.name}
-              </label>
-            ))}
-          </div>
-        </>
-      )}
+      {ready &&
+        (vue === "ensemble" ? (
+          <>
+            <TimelineChart series={totals} />
+            <SavingsRateChart series={totals} />
+          </>
+        ) : (
+          <>
+            {categories.length === 0 ? (
+              <p className="text-[13px] text-ink-muted mb-4">
+                Chargement des catégories…
+              </p>
+            ) : selectedIds.length === 0 ? (
+              <p className="text-[13px] text-ink-muted mb-4">
+                Aucune catégorie sélectionnée.
+              </p>
+            ) : catSeries.length < 2 ? (
+              <p className="text-[13px] text-ink-muted mb-4">
+                Pas assez d&apos;historique sur cette sélection pour tracer
+                une évolution.
+              </p>
+            ) : (
+              <CategoryChart series={catSeries} categories={selectedCats} />
+            )}
+            <div className="grid gap-1.5">
+              {offered.map((c) => (
+                <label
+                  key={c.id}
+                  className="flex items-center gap-2 text-[15px] text-ink"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.includes(c.id)}
+                    onChange={() => toggle(c.id)}
+                  />
+                  <span
+                    className="w-2.5 h-2.5 rounded-full shrink-0"
+                    style={{ backgroundColor: c.color }}
+                  />
+                  {c.name}
+                </label>
+              ))}
+            </div>
+          </>
+        ))}
     </main>
   );
 }

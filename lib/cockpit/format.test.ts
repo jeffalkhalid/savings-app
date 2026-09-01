@@ -1,5 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { eur, todayISO, currentMonth, monthRange } from "./format";
+import {
+  eur,
+  todayISO,
+  currentMonth,
+  monthRange,
+  axisMonthLabel,
+  tooltipMonthLabel,
+} from "./format";
 
 describe("eur", () => {
   it("formats in fr-FR euros", () => {
@@ -16,6 +23,28 @@ describe("monthRange", () => {
   });
   it("rolls December into the next year", () => {
     expect(monthRange("2026-12")).toEqual({ start: "2026-12-01", next: "2027-01-01" });
+  });
+});
+
+describe("axisMonthLabel", () => {
+  it("formats a compact month, no year", () => {
+    expect(axisMonthLabel("2026-08")).toBe("août");
+  });
+  it("parses at local midnight, not UTC (no off-by-one month)", () => {
+    expect(axisMonthLabel("2026-01")).toBe("janv.");
+  });
+});
+
+describe("tooltipMonthLabel", () => {
+  it("includes a 2-digit year", () => {
+    expect(tooltipMonthLabel("2026-08")).toBe("août 26");
+  });
+  it("disambiguates the same month across two different years", () => {
+    const last = tooltipMonthLabel("2025-08");
+    const current = tooltipMonthLabel("2026-08");
+    expect(last).not.toBe(current);
+    expect(last).toBe("août 25");
+    expect(current).toBe("août 26");
   });
 });
 
