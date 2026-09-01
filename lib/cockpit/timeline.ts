@@ -97,3 +97,21 @@ export function topCategories(txns: Txn[], n: number): string[] {
     .slice(0, n)
     .map(([id]) => id);
 }
+
+/**
+ * Retire le mois en cours d'une série mensuelle.
+ *
+ * Un mois non terminé produit un dernier point effondré — dépenses partielles,
+ * taux d'épargne décroché — que l'œil lit comme une chute réelle avant de lire
+ * la légende. Le suivi du mois courant relève d'un autre écran, pas d'une
+ * courbe d'historique.
+ *
+ * Les mois POSTÉRIEURS sont conservés : une opération peut être datée dans le
+ * futur (virement programmé), et il n'y a pas de raison de la masquer.
+ */
+export function withoutCurrentMonth<T extends { month: string }>(
+  series: T[],
+  currentMonth: string
+): T[] {
+  return series.filter((p) => p.month !== currentMonth);
+}

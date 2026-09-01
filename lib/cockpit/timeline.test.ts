@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { monthlyTotals, monthlyByCategory, topCategories } from "./timeline";
+import {
+  monthlyTotals,
+  monthlyByCategory,
+  topCategories,
+  withoutCurrentMonth,
+} from "./timeline";
 import { DEFAULT_SHIFT } from "./budget-month";
 import { computeMetrics } from "./metrics";
 import type { Txn } from "./types";
@@ -219,5 +224,39 @@ describe("topCategories", () => {
       5
     );
     expect(out).toEqual(["courses"]);
+  });
+});
+
+describe("withoutCurrentMonth", () => {
+  it("retire le mois en cours, qui n'est pas terminé", () => {
+    const série = [
+      { month: "2026-07", v: 1 },
+      { month: "2026-08", v: 2 },
+      { month: "2026-09", v: 3 },
+    ];
+    expect(withoutCurrentMonth(série, "2026-09")).toEqual([
+      { month: "2026-07", v: 1 },
+      { month: "2026-08", v: 2 },
+    ]);
+  });
+
+  it("ne retire rien si le mois en cours n'est pas dans la série", () => {
+    const série = [{ month: "2026-07", v: 1 }];
+    expect(withoutCurrentMonth(série, "2026-09")).toEqual(série);
+  });
+
+  it("ne retire que le mois en cours, pas les mois postérieurs", () => {
+    // Une opération peut être datée dans le futur (virement programmé).
+    const série = [
+      { month: "2026-09", v: 1 },
+      { month: "2026-10", v: 2 },
+    ];
+    expect(withoutCurrentMonth(série, "2026-09")).toEqual([
+      { month: "2026-10", v: 2 },
+    ]);
+  });
+
+  it("rend une liste vide pour une entrée vide", () => {
+    expect(withoutCurrentMonth([], "2026-09")).toEqual([]);
   });
 });

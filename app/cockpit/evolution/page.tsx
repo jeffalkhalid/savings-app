@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { currentMonth } from "@/lib/cockpit/format";
 import Link from "next/link";
 import {
   useAllTransactions,
@@ -12,6 +13,7 @@ import {
   monthlyTotals,
   monthlyByCategory,
   topCategories,
+  withoutCurrentMonth,
 } from "@/lib/cockpit/timeline";
 import { TimelineChart } from "@/components/cockpit/TimelineChart";
 import { SavingsRateChart } from "@/components/cockpit/SavingsRateChart";
@@ -35,9 +37,13 @@ export default function EvolutionPage() {
 
   const shift = settings.salary_shift;
 
+  // Le mois en cours est exclu des courbes : non terminé, il produirait un
+  // dernier point effondré qui se lit comme une chute réelle. Son suivi relève
+  // du Cockpit, pas d'une courbe d'historique.
+  const nowMonth = currentMonth();
   const totals = useMemo(
-    () => monthlyTotals(txns, shift),
-    [txns, shift]
+    () => withoutCurrentMonth(monthlyTotals(txns, shift), nowMonth),
+    [txns, shift, nowMonth]
   );
 
   // Sélection par défaut : les cinq postes les plus lourds. `null` signifie
@@ -50,8 +56,12 @@ export default function EvolutionPage() {
   const selectedIds = picked ?? defaultIds;
 
   const catSeries = useMemo(
-    () => monthlyByCategory(txns, shift, selectedIds),
-    [txns, shift, selectedIds]
+    () =>
+      withoutCurrentMonth(
+        monthlyByCategory(txns, shift, selectedIds),
+        nowMonth
+      ),
+    [txns, shift, selectedIds, nowMonth]
   );
   const selectedCats = useMemo(
     () => categories.filter((c) => selectedIds.includes(c.id)),
@@ -86,7 +96,7 @@ export default function EvolutionPage() {
           ) : (
             <>
               <span className="font-mono-num">{totals.length}</span> mois
-              d&apos;historique
+              d&apos;historique · mois en cours exclu
             </>
           )}
         </p>
