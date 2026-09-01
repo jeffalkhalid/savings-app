@@ -47,6 +47,12 @@ export function OpsDrill({
       return next;
     });
 
+  const leaveSelection = () => {
+    setSelected(new Set());
+    setSelecting(false);
+  };
+  const shown = filterTxns(txns, query, mode === "all" ? chip : null);
+
   // La sélection ne doit contenir que des lignes visibles : sinon le compteur
   // de la barre annoncerait des opérations que la recherche a masquées, et on
   // en reclasserait sans les avoir vues.
@@ -59,12 +65,6 @@ export function OpsDrill({
       return next.size === prev.size ? prev : next;
     });
   }, [shownIds]);
-
-  const leaveSelection = () => {
-    setSelected(new Set());
-    setSelecting(false);
-  };
-  const shown = filterTxns(txns, query, mode === "all" ? chip : null);
   const total = shown.reduce((a, t) => a + Math.abs(Number(t.amount)), 0);
   const chipCats = categories.filter((c) =>
     txns.some((t) => t.category_id === c.id)
