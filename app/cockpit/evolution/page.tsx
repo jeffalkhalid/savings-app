@@ -123,6 +123,11 @@ export default function EvolutionPage() {
             <p className="text-[13px] text-ink-muted mb-4">
               Aucune catégorie sélectionnée.
             </p>
+          ) : catSeries.length < 2 ? (
+            <p className="text-[13px] text-ink-muted mb-4">
+              Pas assez d&apos;historique sur cette sélection pour tracer une
+              évolution.
+            </p>
           ) : (
             <CategoryChart series={catSeries} categories={selectedCats} />
           )}
