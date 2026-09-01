@@ -85,6 +85,15 @@ export default function CommercantsPage() {
     <main className="max-w-[600px] mx-auto px-5 pt-8 pb-24">
       {selected ? (
         <>
+          {selected.lastDate && (
+            <p className="text-[13px] text-ink-muted mb-2">
+              Dernière opération le{" "}
+              {new Date(`${selected.lastDate}T00:00:00`).toLocaleDateString(
+                "fr-FR",
+                { day: "numeric", month: "long", year: "numeric" }
+              )}
+            </p>
+          )}
           <MerchantSeriesBars series={series} />
           <OpsDrill
             mode="category"
@@ -136,6 +145,15 @@ export default function CommercantsPage() {
               placeholder="Rechercher un commerçant…"
               className="flex-1 bg-transparent outline-none text-sm py-3 text-ink"
             />
+            {query && (
+              <button
+                type="button"
+                onClick={() => setQuery("")}
+                className="text-ink-muted text-base"
+              >
+                ×
+              </button>
+            )}
           </div>
 
           {!loading && <MerchantList merchants={shown} onSelect={openMerchant} />}
