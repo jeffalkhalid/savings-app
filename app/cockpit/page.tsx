@@ -51,9 +51,7 @@ import { RemindersModal } from "@/components/cockpit/RemindersModal";
 import { ReminderModal } from "@/components/cockpit/ReminderModal";
 import { BudgetsModal } from "@/components/cockpit/BudgetsModal";
 import { CategoryPickerSheet } from "@/components/cockpit/CategoryPickerSheet";
-import { rulesFromTxns, bulkSummary } from "@/lib/cockpit/bulk-select";
-import { updateTransactionsCategory } from "@/lib/cockpit/transactions-api";
-import { setCategoryRules } from "@/lib/cockpit/category-rules-api";
+import { useBulkRecategorise } from "@/lib/cockpit/use-bulk-recategorise";
 
 
 const monthLabelOf = (m: string) =>
@@ -80,9 +78,6 @@ export default function DashboardPage() {
   const [showAdd, setShowAdd] = useState(false);
   const [editTxn, setEditTxn] = useState<Txn | null>(null);
   const [drill, setDrill] = useState<Drill>(null);
-  const [bulkTxns, setBulkTxns] = useState<Txn[] | null>(null);
-  const [bulkNote, setBulkNote] = useState("");
-  const [bulkNoteError, setBulkNoteError] = useState(false);
   const [query, setQuery] = useState("");
   const [chip, setChip] = useState<string | null>(null);
   const [showFixed, setShowFixed] = useState(false);
@@ -104,6 +99,7 @@ export default function DashboardPage() {
   const { rows: monthlyByCat, error: catError } = useMonthlyByCategory(user.id);
   const { reminders, refetch: refetchReminders } = useReminders();
   const { goals } = useGoals();
+  const bulk = useBulkRecategorise(user.id, refetch);
 
   const engagementKeys = useMemo(
     () => new Set(charges.map((c) => c.payee_key)),
@@ -148,38 +144,6 @@ export default function DashboardPage() {
   const notes = useMemo(() => buildNotes(insights, mood), [insights, mood]);
   const label = monthLabelOf(month);
 
-  const applyBulkCategory = async (name: string) => {
-    const picked = bulkTxns ?? [];
-    const cat = categories.find((c) => c.name === name);
-    setBulkTxns(null);
-    if (!cat || !picked.length) return;
-    setBulkNoteError(false);
-    let moved = false;
-    try {
-      await updateTransactionsCategory(
-        picked.map((t) => t.id),
-        cat.id,
-        cat.type
-      );
-      moved = true;
-      const newRules = rulesFromTxns(picked, cat.id);
-      await setCategoryRules(user.id, newRules);
-      setBulkNote(bulkSummary(picked.length, newRules.length, cat.name));
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "Erreur";
-      // Distinguer les deux échecs : si les opérations sont déjà reclassées,
-      // le dire, sinon l'utilisateur croit que rien n'a bougé et recommence.
-      setBulkNote(
-        moved
-          ? `Opérations reclassées, mais la règle n'a pas pu être enregistrée : ${msg}`
-          : msg
-      );
-      setBulkNoteError(true);
-    } finally {
-      // Rafraîchir dans tous les cas : la base a pu changer même en erreur.
-      refetch();
-    }
-  };
   const shiftedLabelOf = useCallback(
     (t: Txn) =>
       isShifted(t, settings.salary_shift)
@@ -307,7 +271,7 @@ export default function DashboardPage() {
         </>
       ) : drill ? (
         <OpsDrill
-          onBulkCategorise={(sel) => setBulkTxns(sel)}
+          onBulkCategorise={bulk.start}
           mode={drill.kind === "all" ? "all" : "category"}
           title={drill.kind === "all" ? ALL_META[drill.type].title : drillCat?.name ?? ""}
           Icon={drill.kind === "all" ? ALL_META[drill.type].Icon : categoryIcon(drillCat?.name ?? "")}
@@ -456,21 +420,23 @@ export default function DashboardPage() {
           onChanged={refetchCharges}
         />
       )}
-      {bulkNote && (
+      {bulk.note && (
         <p
           className={`text-[13px] mb-3 ${
-            bulkNoteError ? "text-accent" : "text-emerald"
+            bulk.noteIsError ? "text-accent" : "text-emerald"
           }`}
         >
-          {bulkNote}
+          {bulk.note}
         </p>
       )}
-      {bulkTxns && (
+      {bulk.pending && (
         <CategoryPickerSheet
           categories={categories.filter((c) => c.active !== false)}
-          title={`Reclasser ${bulkTxns.length} opération${bulkTxns.length > 1 ? "s" : ""}`}
-          onPick={applyBulkCategory}
-          onClose={() => setBulkTxns(null)}
+          title={`Reclasser ${bulk.pending.length} opération${
+            bulk.pending.length > 1 ? "s" : ""
+          }`}
+          onPick={(name) => bulk.apply(name, categories)}
+          onClose={bulk.cancel}
         />
       )}
     </main>
