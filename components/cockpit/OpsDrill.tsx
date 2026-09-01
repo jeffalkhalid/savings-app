@@ -4,7 +4,7 @@ import { eur } from "@/lib/cockpit/format";
 import { filterTxns } from "@/lib/cockpit/txn-filter";
 import type { Txn, Category } from "@/lib/cockpit/types";
 import { SearchX, CheckSquare, type LucideIcon } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { BulkBar } from "@/components/cockpit/BulkBar";
 
 export function OpsDrill({
@@ -46,6 +46,19 @@ export function OpsDrill({
       else next.add(id);
       return next;
     });
+
+  // La sélection ne doit contenir que des lignes visibles : sinon le compteur
+  // de la barre annoncerait des opérations que la recherche a masquées, et on
+  // en reclasserait sans les avoir vues.
+  const shownIds = shown.map((t) => t.id).join(",");
+  useEffect(() => {
+    setSelected((prev) => {
+      if (!prev.size) return prev;
+      const visible = new Set(shownIds ? shownIds.split(",") : []);
+      const next = new Set([...prev].filter((id) => visible.has(id)));
+      return next.size === prev.size ? prev : next;
+    });
+  }, [shownIds]);
 
   const leaveSelection = () => {
     setSelected(new Set());
