@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 import { supabase } from "./supabase";
+import { PAGE_SIZE } from "./paging";
 import { monthRange } from "./format";
 import { budgetMonthOf, shiftWindowStart, type SalaryShift } from "./budget-month";
 import type { Txn, Category, Account } from "./types";
@@ -247,21 +248,56 @@ export function useAllTransactions() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    supabase
-      .from("transactions")
-      .select("id,date,amount,type,description,category_id")
-      .then(({ data, error }) => {
-        if (error) setError(error.message);
-        else {
-          setError(null);
-          setTxns((data as Txn[]) ?? []);
-        }
-        setLoading(false);
-      });
+  // `tick` sert uniquement à relancer l'effet sur demande.
+  const [tick, setTick] = useState(0);
+  const refetch = useCallback(() => {
+    setLoading(true);
+    setTick((n) => n + 1);
   }, []);
 
-  return { txns, loading, error };
+  useEffect(() => {
+    let cancelled = false;
+
+    // Supabase plafonne une réponse à 1000 lignes. On pagine jusqu'à recevoir
+    // une page incomplète : sans cela l'historique est tronqué en silence, et
+    // tout ce qui s'appuie dessus (analyse par commerçant, apprentissage des
+    // catégories, détection des engagements) travaille sur un échantillon.
+    // L'`order` rend la pagination déterministe : sans tri, deux pages
+    // successives peuvent se recouvrir ou se manquer.
+    const run = async () => {
+      const all: Txn[] = [];
+      for (let from = 0; ; from += PAGE_SIZE) {
+        const { data, error } = await supabase
+          .from("transactions")
+          .select("id,date,amount,type,description,category_id")
+          .order("date", { ascending: true })
+          .order("id", { ascending: true })
+          .range(from, from + PAGE_SIZE - 1);
+        if (error) {
+          if (!cancelled) {
+            setError(error.message);
+            setLoading(false);
+          }
+          return;
+        }
+        const page = (data as Txn[]) ?? [];
+        all.push(...page);
+        if (page.length < PAGE_SIZE) break;
+      }
+      if (!cancelled) {
+        setError(null);
+        setTxns(all);
+        setLoading(false);
+      }
+    };
+
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [tick]);
+
+  return { txns, loading, error, refetch };
 }
 
 export function useMonthlyByCategory(userId: string) {
