@@ -160,3 +160,80 @@ describe("merchantKey — famille VIREMENT (saisie manuelle / anciens imports)",
     ).toBe("vr permanent loyer rue camille desmoulin");
   });
 });
+
+describe("merchantKey — vocabulaire de l'export court BNP", () => {
+  it("extrait le créancier d'un « PRELEVEMENT … DU <date> »", () => {
+    expect(
+      merchantKey(
+        "PRELEVEMENT FONCIA VAL DE MARNE GERANCE DU 07/08/26 - EMETTEUR : FR62ZZZ431223 MDT - MOTIF : PRELEVEMENT LOYER FONCIA - REF : E2E-6A63AAA0A24A0EDF3CD296EE LIB"
+      )
+    ).toBe("foncia val de marne gerance");
+  });
+
+  it("converge avec le format SEPA du même créancier", () => {
+    const court = merchantKey(
+      "PRELEVEMENT FONCIA VAL DE MARNE GERANCE DU 07/08/26 - EMETTEUR : FR62ZZZ431223 MDT - MOTIF : X - REF : Y"
+    );
+    const long = merchantKey(
+      "PRLV SEPA FONCIA VAL DE MARNE GERANCE ECH/211025 ID EMETTEUR/FR62ZZZ431223 MDT/W02 REF/E2E-68F LIB/PRELEVEMENT LOYER FONCIA"
+    );
+    expect(court).toBe(long);
+    expect(court).toBe("foncia val de marne gerance");
+  });
+
+  it("donne une clé stable aux prélèvements Bouygues de mois différents", () => {
+    const a = merchantKey(
+      "PRELEVEMENT BOUYGUES TELECOM DU 14/08/26 - EMETTEUR : FR35ZZZ418323 MDT - MOTIF : 07XXXXX886 - REF : PAGP0110GIAWHN LIB"
+    );
+    const b = merchantKey(
+      "PRELEVEMENT BOUYGUES TELECOM DU 14/09/26 - EMETTEUR : FR35ZZZ418323 MDT - MOTIF : 07XXXXX886 - REF : ZQRT9987KLMNOP LIB"
+    );
+    expect(a).toBe("bouygues telecom");
+    expect(a).toBe(b);
+  });
+
+  it("extrait le commerçant d'un « PAIEMENT CB … DU <date> »", () => {
+    expect(
+      merchantKey("PAIEMENT CB ELIOR (FRANCE) DU 28/08/26 - CARTE*4402")
+    ).toBe("elior france");
+  });
+
+  it("regroupe les retraits, quel que soit le vocabulaire", () => {
+    const court = merchantKey(
+      "RETRAIT DISTRIBUTEUR 2SF SOCIETE DES SERV DU 31/05/26 08H49 A CACHAN - CARTE*4402"
+    );
+    const long = merchantKey(
+      "RETRAIT DAB 23/08/25 09H26 17877A00 2SF SOCIETE DES SERV      CACHAN           0004974XXXXXXXX4402"
+    );
+    expect(court).toBe("retrait dab");
+    expect(court).toBe(long);
+  });
+
+  it("ne confond pas un bénéficiaire commençant par A avec le mot « A »", () => {
+    expect(merchantKey("VIREMENT INSTANTANE EMIS ALICE MARTIN")).toBe("alice martin");
+  });
+
+  it("converge sur le virement instantané émis des deux formats", () => {
+    const court = merchantKey(
+      "VIREMENT INSTANTANE EMIS VERS KHALID JEFFAL - MOTIF : EPARGNE"
+    );
+    expect(court).toBe("khalid jeffal");
+  });
+});
+
+describe("merchantKey — variante hybride PRELEVEMENT + ECH/", () => {
+  it("converge avec les deux autres formats du même créancier", () => {
+    const hybride = merchantKey(
+      "PRELEVEMENT CARREFOUR BANQUE ECH/210826 ID EMETTEUR/FR83ZZZ135674 MDT/CS00-51272097231100 REF/CBSDD2026081900000"
+    );
+    const court = merchantKey(
+      "PRELEVEMENT CARREFOUR BANQUE DU 27/08/26 - EMETTEUR : FR83ZZZ135674 MDT - MOTIF : X - REF : Y"
+    );
+    const long = merchantKey(
+      "PRLV SEPA CARREFOUR BANQUE ECH/080825 ID EMETTEUR/FR83ZZZ135674 MDT/CS00-51 REF/CBSDD LIB/Z"
+    );
+    expect(hybride).toBe("carrefour banque");
+    expect(hybride).toBe(court);
+    expect(hybride).toBe(long);
+  });
+});

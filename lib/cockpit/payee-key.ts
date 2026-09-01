@@ -33,15 +33,20 @@ const PATTERNS: RegExp[] = [
   // VIREMENT [INSTANTANE] RECU [DE] <émetteur> [MOTIF…]
   /^VIREMENT\s+(?:INSTANTANE\s+)?RECU\s+(?:DE\s+)?(.+?)(?:\s+MOTIF\b|\s*\/|$)/i,
   // VIREMENT [INSTANTANE] EMIS [A|AU|VERS] <bénéficiaire> [MOTIF…]
-  /^VIREMENT\s+(?:INSTANTANE\s+)?EMIS\s+(?:A|AU|VERS)?\s*(.+?)(?:\s+MOTIF\b|\s*\/|$)/i,
+  /^VIREMENT\s+(?:INSTANTANE\s+)?EMIS\s+(?:(?:A|AU|VERS)\s+)?(.+?)(?:\s+MOTIF\b|\s+-\s|\s*\/|$)/i,
   // VIREMENT DE <émetteur> [MOTIF…]
   /^VIREMENT\s+DE\s+(.+?)(?:\s+MOTIF\b|\s*\/|$)/i,
+  // Vocabulaire de l'export court BNP : « PRELEVEMENT <créancier> DU <date> … »
+  // et « PAIEMENT CB <commerçant> DU <date> … », qui désignent les mêmes tiers
+  // que les libellés PRLV SEPA / FACTURE CARTE de l'export long.
+  /^PRELEVEMENT\s+(.+?)\s+(?:DU\s+\d|ECH\/|ID\s+EMETTEUR)/i,
+  /^PAIEMENT\s+CB\s+(.+?)\s+DU\s+\d/i,
 ];
 
 export function merchantKey(description: string): string {
   const s = String(description ?? "").trim();
   if (!s) return "";
-  if (/^RETRAIT\s+DAB\b/i.test(s)) return "retrait dab";
+  if (/^RETRAIT\s+(?:DAB|DISTRIBUTEUR)\b/i.test(s)) return "retrait dab";
   for (const re of PATTERNS) {
     const m = s.match(re);
     if (m && m[1]) {
