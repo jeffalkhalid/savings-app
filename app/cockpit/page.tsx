@@ -50,6 +50,10 @@ import { setReminderDone } from "@/lib/cockpit/reminders-api";
 import { RemindersModal } from "@/components/cockpit/RemindersModal";
 import { ReminderModal } from "@/components/cockpit/ReminderModal";
 import { BudgetsModal } from "@/components/cockpit/BudgetsModal";
+import { CategoryPickerSheet } from "@/components/cockpit/CategoryPickerSheet";
+import { rulesFromTxns, bulkSummary } from "@/lib/cockpit/bulk-select";
+import { updateTransactionsCategory } from "@/lib/cockpit/transactions-api";
+import { setCategoryRules } from "@/lib/cockpit/category-rules-api";
 
 
 const monthLabelOf = (m: string) =>
@@ -76,6 +80,8 @@ export default function DashboardPage() {
   const [showAdd, setShowAdd] = useState(false);
   const [editTxn, setEditTxn] = useState<Txn | null>(null);
   const [drill, setDrill] = useState<Drill>(null);
+  const [bulkTxns, setBulkTxns] = useState<Txn[] | null>(null);
+  const [bulkNote, setBulkNote] = useState("");
   const [query, setQuery] = useState("");
   const [chip, setChip] = useState<string | null>(null);
   const [showFixed, setShowFixed] = useState(false);
@@ -140,6 +146,26 @@ export default function DashboardPage() {
   );
   const notes = useMemo(() => buildNotes(insights, mood), [insights, mood]);
   const label = monthLabelOf(month);
+
+  const applyBulkCategory = async (name: string) => {
+    const picked = bulkTxns ?? [];
+    const cat = categories.find((c) => c.name === name);
+    setBulkTxns(null);
+    if (!cat || !picked.length) return;
+    try {
+      await updateTransactionsCategory(
+        picked.map((t) => t.id),
+        cat.id,
+        cat.type
+      );
+      const newRules = rulesFromTxns(picked, cat.id);
+      await setCategoryRules(user.id, newRules);
+      setBulkNote(bulkSummary(picked.length, newRules.length, cat.name));
+      refetch();
+    } catch (e) {
+      setBulkNote(e instanceof Error ? e.message : "Erreur");
+    }
+  };
   const shiftedLabelOf = useCallback(
     (t: Txn) =>
       isShifted(t, settings.salary_shift)
@@ -267,6 +293,7 @@ export default function DashboardPage() {
         </>
       ) : drill ? (
         <OpsDrill
+          onBulkCategorise={(sel) => setBulkTxns(sel)}
           mode={drill.kind === "all" ? "all" : "category"}
           title={drill.kind === "all" ? ALL_META[drill.type].title : drillCat?.name ?? ""}
           Icon={drill.kind === "all" ? ALL_META[drill.type].Icon : categoryIcon(drillCat?.name ?? "")}
@@ -413,6 +440,17 @@ export default function DashboardPage() {
           candidates={candidates}
           onClose={() => setShowFixed(false)}
           onChanged={refetchCharges}
+        />
+      )}
+      {bulkNote && (
+        <p className="text-[13px] text-emerald mb-3">{bulkNote}</p>
+      )}
+      {bulkTxns && (
+        <CategoryPickerSheet
+          categories={categories.filter((c) => c.active !== false)}
+          title={`Reclasser ${bulkTxns.length} opération${bulkTxns.length > 1 ? "s" : ""}`}
+          onPick={applyBulkCategory}
+          onClose={() => setBulkTxns(null)}
         />
       )}
     </main>

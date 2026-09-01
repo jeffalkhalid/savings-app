@@ -38,7 +38,7 @@ import { ensureTransferCategories } from "@/lib/cockpit/transfers-api";
 import type { Category } from "@/lib/cockpit/types";
 import { ImportDropzone } from "@/components/cockpit/import/ImportDropzone";
 import { ReviewTable } from "@/components/cockpit/import/ReviewTable";
-import { CategoryPickerSheet } from "@/components/cockpit/import/CategoryPickerSheet";
+import { CategoryPickerSheet } from "@/components/cockpit/CategoryPickerSheet";
 
 type Row = ClassifiedRow & {
   duplicate: boolean;

@@ -50,6 +50,27 @@ export async function updateTransaction(
   if (error) throw new Error(error.message);
 }
 
+/**
+ * Reclasse plusieurs transactions d'un coup.
+ *
+ * Met à jour le `type` en même temps que la catégorie : le type d'une
+ * transaction est dérivé de sa catégorie, et le laisser en arrière ferait
+ * compter une ligne déplacée vers « Épargne » comme une dépense — taux
+ * d'épargne et reste à vivre faussés, sans aucun signal.
+ */
+export async function updateTransactionsCategory(
+  ids: string[],
+  categoryId: string,
+  type: string
+): Promise<void> {
+  if (!ids.length) return;
+  const { error } = await supabase
+    .from("transactions")
+    .update({ category_id: categoryId, type })
+    .in("id", ids);
+  if (error) throw new Error(error.message);
+}
+
 export async function deleteTransaction(id: string): Promise<void> {
   const { error } = await supabase.from("transactions").delete().eq("id", id);
   if (error) throw new Error(error.message);

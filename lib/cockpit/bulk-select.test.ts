@@ -2,8 +2,10 @@ import { describe, it, expect } from "vitest";
 import {
   applyCategoryToSelection,
   rulesFromSelection,
+  rulesFromTxns,
   bulkSummary,
 } from "./bulk-select";
+import type { Txn } from "./types";
 
 const rows = [
   { payeeKey: "elior entretris", categoryName: "Autres" },
@@ -59,5 +61,40 @@ describe("bulkSummary", () => {
     expect(bulkSummary(1, 1, "Autres")).toBe(
       "1 ligne classée en Autres, 1 règle créée"
     );
+  });
+});
+
+describe("rulesFromTxns", () => {
+  const t = (id: string, description: string): Txn => ({
+    id,
+    date: "2026-08-01",
+    amount: -20,
+    description,
+    type: "expense",
+  });
+
+  it("produit une règle par commerçant distinct", () => {
+    const out = rulesFromTxns(
+      [
+        t("1", "PAIEMENT CB ELIOR (FRANCE) DU 28/08/26 - CARTE*4402"),
+        t("2", "PAIEMENT CB ELIOR (FRANCE) DU 12/09/26 - CARTE*4402"),
+        t("3", "PRELEVEMENT BOUYGUES TELECOM DU 14/08/26 - EMETTEUR : X"),
+      ],
+      "cat-loisirs"
+    );
+    expect(out).toHaveLength(2);
+    expect(out.map((r) => r.payeeKey).sort()).toEqual([
+      "bouygues telecom",
+      "elior france",
+    ]);
+    expect(out.every((r) => r.categoryId === "cat-loisirs")).toBe(true);
+  });
+
+  it("ignore les libellés qui ne produisent aucune clé", () => {
+    expect(rulesFromTxns([t("1", "")], "cat-1")).toEqual([]);
+  });
+
+  it("ne produit rien pour une sélection vide", () => {
+    expect(rulesFromTxns([], "cat-1")).toEqual([]);
   });
 });

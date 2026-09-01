@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { Category, Account } from "@/lib/cockpit/types";
 import type { ClassifiedRow } from "@/lib/cockpit/classify";
 import { ReviewRow } from "./ReviewRow";
-import { BulkBar } from "./BulkBar";
+import { BulkBar } from "@/components/cockpit/BulkBar";
 import { isEngagement } from "@/lib/cockpit/recurring-detect";
 
 type Row = ClassifiedRow & {

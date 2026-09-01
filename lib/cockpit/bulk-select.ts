@@ -1,3 +1,6 @@
+import type { Txn } from "./types";
+import { merchantKey } from "./payee-key";
+
 /** Applique une catégorie aux seules lignes sélectionnées, sans muter l'entrée. */
 export function applyCategoryToSelection<
   T extends { payeeKey: string; categoryName: string },
@@ -31,4 +34,21 @@ export function bulkSummary(
   const l = lineCount > 1 ? "lignes classées" : "ligne classée";
   const r = ruleCount > 1 ? "règles créées" : "règle créée";
   return `${lineCount} ${l} en ${categoryName}, ${ruleCount} ${r}`;
+}
+
+/**
+ * Règles déduites d'une sélection de transactions déjà enregistrées : une par
+ * commerçant distinct, comme à l'import. Reclasser dix lignes du même
+ * commerçant n'enseigne qu'une seule chose à l'app.
+ */
+export function rulesFromTxns(
+  txns: Txn[],
+  categoryId: string
+): { payeeKey: string; categoryId: string }[] {
+  const keys = new Set<string>();
+  for (const t of txns) {
+    const key = merchantKey(t.description);
+    if (key) keys.add(key);
+  }
+  return [...keys].map((payeeKey) => ({ payeeKey, categoryId }));
 }

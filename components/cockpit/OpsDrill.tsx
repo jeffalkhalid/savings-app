@@ -1,7 +1,11 @@
+"use client";
+
 import { eur } from "@/lib/cockpit/format";
 import { filterTxns } from "@/lib/cockpit/txn-filter";
 import type { Txn, Category } from "@/lib/cockpit/types";
-import { SearchX, type LucideIcon } from "lucide-react";
+import { SearchX, CheckSquare, type LucideIcon } from "lucide-react";
+import { useState } from "react";
+import { BulkBar } from "@/components/cockpit/BulkBar";
 
 export function OpsDrill({
   mode,
@@ -16,6 +20,7 @@ export function OpsDrill({
   onSelectTxn,
   onBack,
   shiftedLabelOf,
+  onBulkCategorise,
 }: {
   mode: "category" | "all";
   title: string;
@@ -29,7 +34,23 @@ export function OpsDrill({
   onSelectTxn: (t: Txn) => void;
   onBack: () => void;
   shiftedLabelOf?: (txn: Txn) => string | undefined;
+  onBulkCategorise?: (txns: Txn[]) => void;
 }) {
+  const [selecting, setSelecting] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  const toggle = (id: string) =>
+    setSelected((s) => {
+      const next = new Set(s);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const leaveSelection = () => {
+    setSelected(new Set());
+    setSelecting(false);
+  };
   const shown = filterTxns(txns, query, mode === "all" ? chip : null);
   const total = shown.reduce((a, t) => a + Math.abs(Number(t.amount)), 0);
   const chipCats = categories.filter((c) =>
@@ -65,7 +86,27 @@ export function OpsDrill({
             {shown.length} opérations · {eur(total)}
           </div>
         </div>
+        {onBulkCategorise && shown.length > 0 && (
+          <button
+            type="button"
+            onClick={() => (selecting ? leaveSelection() : setSelecting(true))}
+            className="ml-auto flex items-center gap-1.5 text-[13px] text-ink-muted"
+          >
+            <CheckSquare size={15} />
+            {selecting ? "Annuler" : "Sélectionner"}
+          </button>
+        )}
       </div>
+
+      {selecting && (
+        <button
+          type="button"
+          onClick={() => setSelected(new Set(shown.map((t) => t.id)))}
+          className="text-[13px] text-ink underline mb-3"
+        >
+          Tout sélectionner ({shown.length})
+        </button>
+      )}
 
       <div className="flex items-center gap-2 bg-card rounded-xl px-3.5 mb-3">
         <input
@@ -111,9 +152,17 @@ export function OpsDrill({
           <button
             key={t.id}
             type="button"
-            onClick={() => onSelectTxn(t)}
+            onClick={() => (selecting ? toggle(t.id) : onSelectTxn(t))}
             className="w-full text-left flex justify-between items-center gap-2.5 py-2.5 border-b border-rule"
           >
+            {selecting && (
+              <input
+                type="checkbox"
+                readOnly
+                checked={selected.has(t.id)}
+                className="shrink-0"
+              />
+            )}
             <div className="min-w-0">
               <div className="text-sm truncate">{t.description}</div>
               <div className="text-[11.5px] text-ink-muted mt-0.5">
@@ -142,6 +191,17 @@ export function OpsDrill({
             Essaie un autre mot{mode === "all" ? " ou une autre catégorie" : ""}.
           </div>
         </div>
+      )}
+
+      {selecting && (
+        <BulkBar
+          count={selected.size}
+          onPick={() => {
+            onBulkCategorise?.(shown.filter((t) => selected.has(t.id)));
+            leaveSelection();
+          }}
+          onClear={leaveSelection}
+        />
       )}
     </section>
   );
