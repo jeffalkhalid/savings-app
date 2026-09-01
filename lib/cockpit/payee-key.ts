@@ -28,6 +28,14 @@ const PATTERNS: RegExp[] = [
   /^VIR\s+SEPA\s+(?:INST\s+)?EMIS\b.*?\/BEN\s+(.+?)(?:\s*\/|$)/i,
   // VIREMENT FAVEUR TIERS <libellé>
   /^VIREMENT\s+FAVEUR\s+TIERS\s+(.+?)(?:\s*\/|$)/i,
+  // Famille « VIREMENT … » : libellés saisis à la main ou issus d'anciens
+  // imports, qui désignent le même tiers que les libellés SEPA ci-dessus.
+  // VIREMENT [INSTANTANE] RECU [DE] <émetteur> [MOTIF…]
+  /^VIREMENT\s+(?:INSTANTANE\s+)?RECU\s+(?:DE\s+)?(.+?)(?:\s+MOTIF\b|\s*\/|$)/i,
+  // VIREMENT [INSTANTANE] EMIS [A|AU|VERS] <bénéficiaire> [MOTIF…]
+  /^VIREMENT\s+(?:INSTANTANE\s+)?EMIS\s+(?:A|AU|VERS)?\s*(.+?)(?:\s+MOTIF\b|\s*\/|$)/i,
+  // VIREMENT DE <émetteur> [MOTIF…]
+  /^VIREMENT\s+DE\s+(.+?)(?:\s+MOTIF\b|\s*\/|$)/i,
 ];
 
 export function merchantKey(description: string): string {

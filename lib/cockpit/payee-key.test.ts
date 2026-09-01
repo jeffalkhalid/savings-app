@@ -112,3 +112,51 @@ describe("merchantKey — autres opérations", () => {
     expect(merchantKey(null as unknown as string)).toBe("");
   });
 });
+
+describe("merchantKey — famille VIREMENT (saisie manuelle / anciens imports)", () => {
+  it("extrait l'émetteur d'un « VIREMENT DE … MOTIF »", () => {
+    expect(merchantKey("VIREMENT DE CARREFOUR FRANCE MOTIF: SALAIRE")).toBe(
+      "carrefour france"
+    );
+  });
+
+  it("extrait l'émetteur d'un « VIREMENT INSTANTANE RECU DE … »", () => {
+    expect(
+      merchantKey("VIREMENT INSTANTANE RECU DE MME YASMINE JEFFAL")
+    ).toBe("mme yasmine jeffal");
+  });
+
+  it("extrait l'émetteur d'un « VIREMENT RECU DE … »", () => {
+    expect(merchantKey("VIREMENT RECU DE CARREFOUR FRANCE")).toBe(
+      "carrefour france"
+    );
+  });
+
+  it("extrait le bénéficiaire d'un « VIREMENT INSTANTANE EMIS … »", () => {
+    expect(
+      merchantKey("VIREMENT INSTANTANE EMIS A KHALID REVOLUT MOTIF: X")
+    ).toBe("khalid revolut");
+  });
+
+  it("converge avec le format SEPA du même payeur", () => {
+    const sepa = merchantKey(
+      "VIR SEPA RECU /DE CARREFOUR FRANCE /MOTIF  /REF CARREFOUR 196187027523717"
+    );
+    const manuel = merchantKey("VIREMENT DE CARREFOUR FRANCE MOTIF: SALAIRE");
+    expect(manuel).toBe(sepa);
+  });
+
+  it("converge aussi pour un virement instantané reçu", () => {
+    const sepa = merchantKey(
+      "VIR SEPA INST RECU /DE MME YASMINE JEFFAL /REF X /MOTIF Y"
+    );
+    const manuel = merchantKey("VIREMENT INSTANTANE RECU DE MME YASMINE JEFFAL");
+    expect(manuel).toBe(sepa);
+  });
+
+  it("ne casse pas VIREMENT FAVEUR TIERS", () => {
+    expect(
+      merchantKey("VIREMENT FAVEUR TIERS VR.PERMANENT LOYER 31 RUE CAMILLE DESMOULIN")
+    ).toBe("vr permanent loyer rue camille desmoulin");
+  });
+});
