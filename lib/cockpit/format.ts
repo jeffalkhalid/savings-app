@@ -1,7 +1,23 @@
 export const eur = (n: number) =>
   new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(n);
 
-export const todayISO = () => new Date().toISOString().slice(0, 10);
+/**
+ * Date civile d'une instant, dans le fuseau de l'utilisateur.
+ *
+ * Surtout pas `toISOString().slice(0, 10)` : celui-ci rend la date UTC, donc
+ * la veille pendant les premières heures de chaque journée à Paris. Le
+ * sélecteur de mois, la carte « Tenue du mois » et l'écran Dérive dérivent
+ * tous de cette fonction — le 1er du mois à 00 h 30, ils affichaient encore
+ * le mois précédent.
+ *
+ * Exporté pour être testable sans toucher à l'horloge du système.
+ */
+export function localISO(d: Date): string {
+  const two = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}`;
+}
+
+export const todayISO = () => localISO(new Date());
 
 export const currentMonth = () => todayISO().slice(0, 7);
 
