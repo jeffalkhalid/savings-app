@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   eur,
+  localISO,
   todayISO,
   currentMonth,
   monthRange,
@@ -48,9 +49,42 @@ describe("tooltipMonthLabel", () => {
   });
 });
 
+describe("localISO", () => {
+  // Les dates sont construites avec des composantes LOCALES et relues en
+  // local : ces tests ne dépendent donc pas du fuseau de la machine.
+  it("rend la date civile de l'utilisateur, pas celle d'UTC", () => {
+    // Le régression : à 00 h 30 le 1er septembre à Paris, il est encore le
+    // 31 août à Greenwich. L'ancienne implémentation découpait
+    // `toISOString()` et répondait donc « août » pendant les premières
+    // heures de chaque mois — le sélecteur de mois, la carte « Tenue du
+    // mois » et l'écran Dérive s'en trouvaient tous décalés d'un cran.
+    expect(localISO(new Date(2026, 8, 1, 0, 30))).toBe("2026-09-01");
+  });
+
+  it("ne bascule pas non plus en fin de journée", () => {
+    expect(localISO(new Date(2026, 8, 1, 23, 45))).toBe("2026-09-01");
+  });
+
+  it("complète le mois et le jour à deux chiffres", () => {
+    expect(localISO(new Date(2026, 0, 5, 12, 0))).toBe("2026-01-05");
+  });
+
+  it("gère le dernier jour de l'année", () => {
+    expect(localISO(new Date(2026, 11, 31, 23, 59))).toBe("2026-12-31");
+  });
+
+  it("gère le 29 février d'une année bissextile", () => {
+    expect(localISO(new Date(2028, 1, 29, 6, 0))).toBe("2028-02-29");
+  });
+});
+
 describe("todayISO / currentMonth", () => {
   it("todayISO is YYYY-MM-DD", () => {
     expect(todayISO()).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  it("todayISO rend la date locale du jour", () => {
+    expect(todayISO()).toBe(localISO(new Date()));
   });
   it("currentMonth is YYYY-MM and is the prefix of todayISO", () => {
     expect(currentMonth()).toMatch(/^\d{4}-\d{2}$/);
