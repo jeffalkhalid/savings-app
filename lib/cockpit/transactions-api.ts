@@ -57,6 +57,13 @@ export async function updateTransaction(
  * transaction est dérivé de sa catégorie, et le laisser en arrière ferait
  * compter une ligne déplacée vers « Épargne » comme une dépense — taux
  * d'épargne et reste à vivre faussés, sans aucun signal.
+ *
+ * Découpé par lots de 200 comme `deleteTransactions` ci-dessous : un `in (…)`
+ * de plusieurs centaines d'identifiants tient dans l'URL jusqu'au jour où il
+ * n'y tient plus (414 illisible). Le tri par commerçant sur tout l'historique
+ * est le premier appelant capable de dépasser ce seuil — `merchantKey`
+ * regroupe par exemple tous les retraits DAB sous une seule clé. Les lots
+ * partent en série ; si l'un échoue, les précédents sont déjà appliqués.
  */
 export async function updateTransactionsCategory(
   ids: string[],
@@ -72,11 +79,16 @@ export async function updateTransactionsCategory(
     type === "savings"
       ? { category_id: categoryId, type }
       : { category_id: categoryId, type, goal_id: null };
-  const { error } = await supabase
-    .from("transactions")
-    .update(patch)
-    .in("id", ids);
-  if (error) throw new Error(error.message);
+  const CHUNK = 200;
+  for (let i = 0; i < ids.length; i += CHUNK) {
+    const slice = ids.slice(i, i + CHUNK);
+    if (!slice.length) continue;
+    const { error } = await supabase
+      .from("transactions")
+      .update(patch)
+      .in("id", slice);
+    if (error) throw new Error(error.message);
+  }
 }
 
 export async function deleteTransaction(id: string): Promise<void> {
