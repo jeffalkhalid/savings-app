@@ -4,6 +4,9 @@ import type { SimulationResult, StrategyKey } from "@/lib/types";
 import { STRATEGIES } from "@/lib/strategies";
 import { formatEuro, formatMultiplier } from "@/lib/format";
 
+/** Le français distingue « 1er » des autres ordinaux, qui prennent « ᵉ ». */
+const ord = (n: number) => (n === 1 ? "1er" : `${n}ᵉ`);
+
 interface Props {
   results: SimulationResult[];
   shocked?: SimulationResult[] | null;
@@ -113,7 +116,7 @@ export function StrategyRanking({ results, shocked, selected, onSelect }: Props)
                   </div>
                   {shockedRank.get(r.strategy) !== idx && (
                     <div className="text-[11px] text-ink mt-1.5">
-                      Passe {idx + 1}ᵉ → {(shockedRank.get(r.strategy) ?? 0) + 1}ᵉ
+                      Passe {ord(idx + 1)} → {ord((shockedRank.get(r.strategy) ?? 0) + 1)}
                     </div>
                   )}
                 </div>
