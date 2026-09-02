@@ -78,7 +78,11 @@ export function frequentCategories(
 ```
 
 - **Une ligne est « non classée »** si sa catégorie est absente (`category_id` nul, ou inconnu de la
-  table des catégories) ou si elle porte le nom de repli « Autres ».
+  table des catégories) ou si elle porte le nom de repli « Autres ». Une ligne rangée dans une
+  catégorie **archivée** n'est **pas** non classée : la catégorie existe toujours, l'archivage n'est
+  qu'un choix d'affichage (les transactions gardent leur `category_id`). Le prédicat lit donc TOUTES
+  les catégories, actives et archivées ; seules les catégories actives sont proposées à l'utilisateur
+  (chips, sélecteur, suggestion).
 - **Un commerçant entre dans la file** s'il a au moins une ligne non classée **et** que sa clé n'est
   couverte par aucune règle. La règle est la mémoire du « j'ai tranché » — c'est ce qui permet de se
   passer d'une migration.
@@ -87,7 +91,10 @@ export function frequentCategories(
 - **`samples`** porte jusqu'à quatre libellés **distincts**, les plus fréquents d'abord. Ils ne sont
   pas décoratifs : `merchantKey` regroupe des variantes, et c'est en les lisant qu'on repère un
   regroupement abusif avant de classer 23 lignes d'un coup.
-- **Les montants sont sommés en valeur absolue**, comme partout ailleurs dans l'app.
+- **Les montants sont sommés en valeur absolue**, comme partout ailleurs dans l'app — ce total classe
+  la file, mais il masque un commerçant qui à la fois paie et est payé (ex. virements reçus/émis vers
+  le même tiers) : une décision réécrit le `type` de chaque ligne, donc la carte doit aussi montrer la
+  répartition par type quand les lignes non classées n'en ont pas qu'un seul.
 - **Tous les types d'opération sont concernés**, pas seulement les dépenses : une ligne de revenu ou
   de virement sans catégorie est tout aussi non classée, et c'est souvent là que se cachent les
   virements internes mal rangés.
@@ -102,12 +109,17 @@ Un commerçant à la fois.
 ### 5.1 Ce que porte la carte
 
 - Le libellé du commerçant, en tête.
-- **`N opérations · X €`**, et la période (« de mars à septembre »).
+- **`N opérations · X €`**, et la période (« de mars 25 à sept. 25 » — toujours avec l'année, car sur
+  un historique de 13 mois ou plus le mois seul est ambigu).
+- Quand les lignes non classées ne sont pas toutes du même type, une seconde ligne donne leur
+  répartition (« 3 dépenses · 2 revenus ») : le total ci-dessus est en valeur absolue et le cacherait
+  sinon.
 - Les libellés d'exemple, en petit et en `.font-mono-num` s'ils contiennent des montants — au plus
   quatre, pour repérer un regroupement abusif.
 - **La suggestion**, si elle existe, en premier et explicitement marquée comme telle.
-- Puis les catégories les plus utilisées, puis **« Toutes les catégories… »** qui ouvre le sélecteur
-  déjà utilisé par la sélection multiple (`CategoryPickerSheet`).
+- Puis les catégories les plus utilisées, puis une chip **« Laisser dans Autres »** — la forme visible
+  de la règle explicite vers « Autres » du §2 —, puis **« Toutes les catégories… »** qui ouvre le
+  sélecteur déjà utilisé par la sélection multiple (`CategoryPickerSheet`).
 - **« Passer »**, qui remet le commerçant à plus tard sans rien écrire.
 
 ### 5.2 Ce que fait un choix
