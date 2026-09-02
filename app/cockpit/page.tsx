@@ -39,6 +39,8 @@ import { StatStrip } from "@/components/cockpit/StatStrip";
 import { InsightsRow } from "@/components/cockpit/InsightsRow";
 import { CategoryBreakdown } from "@/components/cockpit/CategoryBreakdown";
 import { EngagementsBar } from "@/components/cockpit/EngagementsBar";
+import { MonthPaceCard } from "@/components/cockpit/MonthPaceCard";
+import { monthPace } from "@/lib/cockpit/pace";
 import { EngagementsModal } from "@/components/cockpit/EngagementsModal";
 import { TransferTriage } from "@/components/cockpit/TransferTriage";
 import { TransferNudge } from "@/components/cockpit/TransferNudge";
@@ -130,6 +132,19 @@ export default function DashboardPage() {
   const totals = useMemo(
     () => engagementsTotals(matches, metrics.depenses),
     [matches, metrics.depenses]
+  );
+  // « Est-ce que je tiens » n'a de sens que sur le mois en cours : un budget
+  // journalier sur un mois clos serait absurde.
+  const isCurrentMonth = month === currentMonth();
+  const pace = useMemo(
+    () =>
+      monthPace({
+        resteAVivre: metrics.resteAVivre,
+        pendingEngagements: totals.pending,
+        variable: totals.variable,
+        today: todayISO(),
+      }),
+    [metrics.resteAVivre, totals.pending, totals.variable]
   );
   const candidates = useMemo(() => {
     const confirmed = new Set(charges.map((c) => c.payee_key));
@@ -310,6 +325,7 @@ export default function DashboardPage() {
               onDrill={() => setShowFixed(true)}
             />
           )}
+          {isCurrentMonth && <MonthPaceCard pace={pace} />}
           {catError && (
             <p className="text-ink-muted text-xs mb-2">
               Répartition indisponible — réessaie plus tard.
