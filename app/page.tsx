@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
+import { LayoutGrid } from "lucide-react";
 import { ParameterPanel } from "@/components/ParameterPanel";
 import { StrategyRanking } from "@/components/StrategyRanking";
 import { ComparisonChart } from "@/components/ComparisonChart";
@@ -33,9 +35,21 @@ export default function Page() {
               recalculé en direct.
             </p>
           </div>
-          <div className="text-xs text-ink-muted text-right hidden lg:block">
-            <div>Horizon {params.years} ans</div>
-            <div>Rendement {(params.rate * 100).toFixed(1)}%/an</div>
+          <div className="flex items-center gap-6">
+            <div className="text-xs text-ink-muted text-right hidden lg:block">
+              <div>Horizon {params.years} ans</div>
+              <div>Rendement {(params.rate * 100).toFixed(1)}%/an</div>
+            </div>
+            {/* Le simulateur et le Cockpit sont deux applications du même
+                dépôt, sans passerelle jusqu'ici : on entrait dans l'une ou
+                l'autre par l'URL. */}
+            <Link
+              href="/cockpit"
+              className="flex items-center gap-2 border border-rule rounded-lg px-4 py-2.5 text-sm text-ink"
+            >
+              <LayoutGrid size={16} className="text-ink-muted" />
+              Cockpit
+            </Link>
           </div>
         </div>
       </header>
