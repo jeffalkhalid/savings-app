@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { SkipForward, Sparkles } from "lucide-react";
 import {
@@ -9,15 +9,25 @@ import {
   useCategories,
   useCategoryRules,
 } from "@/lib/cockpit/hooks";
-import { triageQueue, frequentCategories } from "@/lib/cockpit/triage";
+import { triageQueue, frequentCategories, unsortedIdsFor } from "@/lib/cockpit/triage";
 import type { TriageMerchant } from "@/lib/cockpit/triage";
-import { merchantKey } from "@/lib/cockpit/payee-key";
 import { updateTransactionsCategory } from "@/lib/cockpit/transactions-api";
 import { setCategoryRules } from "@/lib/cockpit/category-rules-api";
 import { CategoryPickerSheet } from "@/components/cockpit/CategoryPickerSheet";
-import { axisMonthLabel, eur } from "@/lib/cockpit/format";
+import { tooltipMonthLabel, eur } from "@/lib/cockpit/format";
+import type { Txn } from "@/lib/cockpit/types";
 
 const SUGGESTED_COUNT = 5;
+const FALLBACK_NAME = "Autres";
+
+// Ordre d'affichage fixe de la répartition par type, et accord pluriel FR.
+const TYPE_LABELS: Record<Txn["type"], [string, string]> = {
+  expense: ["dépense", "dépenses"],
+  income: ["revenu", "revenus"],
+  transfer: ["virement", "virements"],
+  savings: ["ligne d'épargne", "lignes d'épargne"],
+};
+const TYPE_ORDER: Txn["type"][] = ["expense", "income", "transfer", "savings"];
 
 export default function TriPage() {
   const user = useAuth();
@@ -36,23 +46,51 @@ export default function TriPage() {
   const [justApplied, setJustApplied] = useState<string | null>(null);
   const [showAll, setShowAll] = useState(false);
 
+  // Vrai une fois que l'historique a été chargé au moins une fois. À la
+  // différence de `loading` (qui repasse à true à chaque refetch après une
+  // décision), celui-ci ne redescend jamais : sans lui, la carte se
+  // démonterait et réapparaîtrait à chaque tap (« Chargement… » entre chaque
+  // décision), et l'état vide « Tout est trié » clignoterait avant le tout
+  // premier chargement.
+  const [txnsLoadedOnce, setTxnsLoadedOnce] = useState(false);
+  useEffect(() => {
+    if (!loading) setTxnsLoadedOnce(true);
+  }, [loading]);
+
   const activeCategories = useMemo(
     () => categories.filter((c) => c.active !== false),
     [categories]
   );
+  // Catégories choisissables sur cet écran (actives) : pour les chips, le
+  // sélecteur complet, et les gates de `suggest`.
   const categoryNameById = useMemo(
     () => new Map(activeCategories.map((c) => [c.id, c.name])),
     [activeCategories]
+  );
+  // TOUTES les catégories, actives ou archivées : archiver une catégorie
+  // (CategoriesModal) est un affichage, pas une suppression, les
+  // transactions gardent leur category_id. Le prédicat « non classé » doit
+  // lire cette map complète — sans quoi une ligne déjà classée dans une
+  // catégorie archivée entre dans la file, et un tap réécrit silencieusement
+  // une décision antérieure (catégorie ET type) sur tout l'historique.
+  const knownNames = useMemo(
+    () => new Map(categories.map((c) => [c.id, c.name])),
+    [categories]
+  );
+  const choosableNames = useMemo(
+    () => new Set(categoryNameById.values()),
+    [categoryNameById]
   );
 
   const queue = useMemo(
     () =>
       triageQueue({
         txns,
-        categoryNameById,
+        categoryNameById: knownNames,
         ruledKeys: new Set(rules.keys()),
+        choosableNames,
       }),
-    [txns, categoryNameById, rules]
+    [txns, knownNames, choosableNames, rules]
   );
 
   // Les commerçants passés sortent de la file affichée : sans cela le
@@ -63,6 +101,14 @@ export default function TriPage() {
   );
   const current: TriageMerchant | null = remaining[0] ?? null;
   const remainingTotal = remaining.reduce((a, m) => a + m.total, 0);
+
+  // La file change (nouvelle décision prise en compte, ou passage) : plus
+  // aucune raison de garder le verrou posé le tour précédent. Sans cela, un
+  // refetch dont le Map de règles retombe vide en silence (voir
+  // `useCategoryRules.refetch`) stranderait la carte verrouillée sans issue.
+  useEffect(() => {
+    setJustApplied(null);
+  }, [queue]);
 
   const frequent = useMemo(
     () => frequentCategories(txns, categoryNameById, SUGGESTED_COUNT),
@@ -80,7 +126,13 @@ export default function TriPage() {
     return out;
   }, [current, frequent]);
 
-  const ready = !loading && rulesLoaded;
+  const autresChoosable = choosableNames.has(FALLBACK_NAME);
+
+  // Gate d'affichage : n'apparaît qu'une fois pour de bon, à la différence de
+  // `loading` qui redevient true à chaque refetch déclenché par une décision.
+  // `rulesLoaded` ne pose pas ce problème : `useCategoryRules.refetch` ne le
+  // repasse jamais à false, il ne fait que le mettre à true en fin de charge.
+  const ready = txnsLoadedOnce && rulesLoaded;
 
   // Le commerçant reste verrouillé tant que le refetch n'a pas fait avancer
   // la file : sans cela, une carte encore affichée après un envoi réussi
@@ -95,16 +147,12 @@ export default function TriPage() {
     const cat = activeCategories.find((c) => c.name === categoryName);
     if (!cat) return;
 
-    // Seules les lignes non classées de ce commerçant : les autres portent une
-    // décision antérieure que ce tri n'a pas à défaire.
-    const ids = txns
-      .filter((t) => merchantKey(t.description) === current.key)
-      .filter((t) => {
-        if (!t.category_id) return true;
-        const name = categoryNameById.get(t.category_id);
-        return !name || name === "Autres";
-      })
-      .map((t) => t.id);
+    // Seules les lignes non classées de ce commerçant, sur la même règle que
+    // la file (`unsortedIdsFor` partage `isUnsorted` avec `triageQueue`) :
+    // les autres portent une décision antérieure que ce tri n'a pas à
+    // défaire, et la file ne peut pas lister un commerçant qu'on refuse
+    // ensuite de déplacer.
+    const ids = unsortedIdsFor(txns, current.key, knownNames);
 
     setBusy(true);
     setFailure(null);
@@ -143,11 +191,32 @@ export default function TriPage() {
     }
   };
 
+  const skip = () => {
+    if (!current) return;
+    setFailure(null);
+    setSkipped((s) => new Set(s).add(current.key));
+  };
+
   const periode = (m: TriageMerchant) => {
-    const from = axisMonthLabel(m.firstDate.slice(0, 7));
-    const to = axisMonthLabel(m.lastDate.slice(0, 7));
+    // `tooltipMonthLabel` (« août 25 »), pas `axisMonthLabel` (« août ») :
+    // sur un historique de 13 mois ou plus, le mois seul est ambigu, deux
+    // « août » sont possibles.
+    const from = tooltipMonthLabel(m.firstDate.slice(0, 7));
+    const to = tooltipMonthLabel(m.lastDate.slice(0, 7));
     return from === to ? `en ${from}` : `de ${from} à ${to}`;
   };
+
+  // Répartition par type des lignes non classées, seulement quand elle mêle
+  // plus d'un type : un tap réécrit `type` en même temps que la catégorie, et
+  // le total en valeur absolue de la carte masque un commerçant qui à la
+  // fois paie et est payé.
+  const typeMix = useMemo(() => {
+    if (!current) return null;
+    const entries = TYPE_ORDER
+      .map((ty) => [ty, current.typeCounts[ty] ?? 0] as const)
+      .filter(([, n]) => n > 0);
+    return entries.length > 1 ? entries : null;
+  }, [current]);
 
   return (
     <main className="max-w-[600px] mx-auto px-5 pt-8 pb-24">
@@ -157,7 +226,7 @@ export default function TriPage() {
         </Link>
         <h1 className="font-display text-2xl mt-2">Trier</h1>
         <p className="text-[13px] text-ink-muted mt-1">
-          {!ready
+          {loading || !rulesLoaded
             ? "Chargement…"
             : `Reste ${remaining.length} commerçant${
                 remaining.length > 1 ? "s" : ""
@@ -205,6 +274,21 @@ export default function TriPage() {
             {periode(current)}
           </div>
 
+          {typeMix && (
+            <div className="text-[12.5px] text-accent mt-0.5">
+              {typeMix.map(([ty, n], i) => {
+                const [singular, plural] = TYPE_LABELS[ty];
+                return (
+                  <span key={ty}>
+                    {i > 0 && " · "}
+                    <span className="font-mono-num">{n}</span>{" "}
+                    {n > 1 ? plural : singular}
+                  </span>
+                );
+              })}
+            </div>
+          )}
+
           {current.samples.length > 1 && (
             <div className="mt-3 pt-3 border-t border-rule">
               {/* Les exemples révèlent un regroupement abusif avant qu'on
@@ -248,6 +332,16 @@ export default function TriPage() {
                 </button>
               );
             })}
+            {autresChoosable && (
+              <button
+                type="button"
+                disabled={locked}
+                onClick={() => apply(FALLBACK_NAME)}
+                className="flex items-center gap-2 text-left py-3 px-3 rounded-lg text-[14px] bg-seg text-ink disabled:opacity-50"
+              >
+                Laisser dans Autres
+              </button>
+            )}
           </div>
 
           <div className="flex gap-3 mt-3">
@@ -261,11 +355,8 @@ export default function TriPage() {
             </button>
             <button
               type="button"
-              disabled={locked}
-              onClick={() =>
-                setSkipped((s) => new Set(s).add(current.key))
-              }
-              className="flex items-center gap-1.5 text-[13px] text-ink-muted py-2.5 disabled:opacity-50"
+              onClick={skip}
+              className="flex items-center gap-1.5 text-[13px] text-ink-muted py-2.5"
             >
               <SkipForward size={15} />
               Passer
