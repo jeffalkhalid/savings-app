@@ -55,7 +55,9 @@ import { RemindersModal } from "@/components/cockpit/RemindersModal";
 import { ReminderModal } from "@/components/cockpit/ReminderModal";
 import { BudgetsModal } from "@/components/cockpit/BudgetsModal";
 import { CategoryPickerSheet } from "@/components/cockpit/CategoryPickerSheet";
+import { ConfirmDeleteSheet } from "@/components/cockpit/ConfirmDeleteSheet";
 import { useBulkRecategorise } from "@/lib/cockpit/use-bulk-recategorise";
+import { useBulkDelete } from "@/lib/cockpit/use-bulk-delete";
 
 
 const monthLabelOf = (m: string) =>
@@ -105,6 +107,7 @@ export default function DashboardPage() {
   const { reminders, refetch: refetchReminders } = useReminders();
   const { goals } = useGoals();
   const bulk = useBulkRecategorise(user.id, refetch);
+  const del = useBulkDelete(refetch);
 
   const engagementKeys = useMemo(
     () => new Set(charges.map((c) => c.payee_key)),
@@ -315,6 +318,7 @@ export default function DashboardPage() {
       ) : drill ? (
         <OpsDrill
           onBulkCategorise={bulk.start}
+          onBulkDelete={del.start}
           mode={drill.kind === "all" ? "all" : "category"}
           title={drill.kind === "all" ? ALL_META[drill.type].title : drillCat?.name ?? ""}
           Icon={drill.kind === "all" ? ALL_META[drill.type].Icon : categoryIcon(drillCat?.name ?? "")}
@@ -483,6 +487,23 @@ export default function DashboardPage() {
           }`}
           onPick={(name) => bulk.apply(name, categories)}
           onClose={bulk.cancel}
+        />
+      )}
+      {del.note && (
+        <p
+          className={`text-[13px] mb-3 ${
+            del.noteIsError ? "text-accent" : "text-emerald"
+          }`}
+        >
+          {del.note}
+        </p>
+      )}
+      {del.pending && (
+        <ConfirmDeleteSheet
+          txns={del.pending}
+          busy={del.busy}
+          onConfirm={del.confirm}
+          onClose={del.cancel}
         />
       )}
     </main>

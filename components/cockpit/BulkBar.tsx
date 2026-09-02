@@ -1,14 +1,16 @@
 "use client";
 
-import { X } from "lucide-react";
+import { X, Trash2 } from "lucide-react";
 
 export function BulkBar({
   count,
   onPick,
+  onDelete,
   onClear,
 }: {
   count: number;
-  onPick: () => void;
+  onPick?: () => void;
+  onDelete?: () => void;
   onClear: () => void;
 }) {
   if (!count) return null;
@@ -17,13 +19,25 @@ export function BulkBar({
       <span className="text-[13px] text-ink font-medium">
         {count} sélectionnée{count > 1 ? "s" : ""}
       </span>
-      <button
-        type="button"
-        onClick={onPick}
-        className="ml-auto bg-emerald text-paper rounded-lg px-4 py-2.5 text-[13px] font-semibold"
-      >
-        Catégoriser
-      </button>
+      {onDelete && (
+        <button
+          type="button"
+          onClick={onDelete}
+          className="ml-auto flex items-center gap-1.5 text-accent text-[13px] font-semibold px-2 py-2.5"
+        >
+          <Trash2 size={15} />
+          Supprimer
+        </button>
+      )}
+      {onPick && (
+        <button
+          type="button"
+          onClick={onPick}
+          className={`${onDelete ? "" : "ml-auto "}bg-emerald text-paper rounded-lg px-4 py-2.5 text-[13px] font-semibold`}
+        >
+          Catégoriser
+        </button>
+      )}
       <button
         type="button"
         aria-label="Tout désélectionner"

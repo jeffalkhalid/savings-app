@@ -52,3 +52,23 @@ export function rulesFromTxns(
   }
   return [...keys].map((payeeKey) => ({ payeeKey, categoryId }));
 }
+
+/**
+ * Compte et total d'une sélection à supprimer.
+ *
+ * Le total est **signé**, pas en valeur absolue : une sélection qui mêle une
+ * dépense et un remboursement doit se lire pour ce qu'elle est. Un écran de
+ * confirmation qui annonce « 80 € » là où la sélection vaut −80 € ment sur le
+ * sens du geste, juste avant un geste irréversible.
+ */
+export function deletionTotals(txns: Txn[]): { count: number; total: number } {
+  let total = 0;
+  for (const t of txns) total += Number(t.amount);
+  return { count: txns.length, total };
+}
+
+export function deleteSummary(count: number): string {
+  return count > 1
+    ? `${count} opérations supprimées`
+    : `${count} opération supprimée`;
+}

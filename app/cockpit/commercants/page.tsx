@@ -12,9 +12,11 @@ import {
 import type { MerchantSortKey, SortDir } from "@/lib/cockpit/merchants";
 import { merchantKey } from "@/lib/cockpit/payee-key";
 import { useBulkRecategorise } from "@/lib/cockpit/use-bulk-recategorise";
+import { useBulkDelete } from "@/lib/cockpit/use-bulk-delete";
 import { MerchantList } from "@/components/cockpit/MerchantList";
 import { MerchantSeriesBars } from "@/components/cockpit/MerchantSeriesBars";
 import { CategoryPickerSheet } from "@/components/cockpit/CategoryPickerSheet";
+import { ConfirmDeleteSheet } from "@/components/cockpit/ConfirmDeleteSheet";
 import { OpsDrill } from "@/components/cockpit/OpsDrill";
 import { eur } from "@/lib/cockpit/format";
 import type { TxnType } from "@/lib/cockpit/types";
@@ -87,6 +89,7 @@ export default function CommercantsPage() {
   // Recharger après un reclassement : sans cela la liste garde les anciennes
   // catégories et les totaux ne bougent pas.
   const bulk = useBulkRecategorise(user.id, refetch);
+  const del = useBulkDelete(refetch);
 
   const chipCls = (active: boolean) =>
     `shrink-0 rounded-full px-3 py-1.5 text-[12px] ${
@@ -132,6 +135,7 @@ export default function CommercantsPage() {
             onSelectTxn={() => {}}
             onBack={closeMerchant}
             onBulkCategorise={bulk.start}
+            onBulkDelete={del.start}
           />
         </>
       ) : (
@@ -229,6 +233,24 @@ export default function CommercantsPage() {
           }`}
           onPick={(name) => bulk.apply(name, categories)}
           onClose={bulk.cancel}
+        />
+      )}
+
+      {del.note && (
+        <p
+          className={`text-[13px] mt-3 ${
+            del.noteIsError ? "text-accent" : "text-emerald"
+          }`}
+        >
+          {del.note}
+        </p>
+      )}
+      {del.pending && (
+        <ConfirmDeleteSheet
+          txns={del.pending}
+          busy={del.busy}
+          onConfirm={del.confirm}
+          onClose={del.cancel}
         />
       )}
     </main>

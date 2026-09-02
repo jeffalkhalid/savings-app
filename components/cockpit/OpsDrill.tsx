@@ -27,6 +27,7 @@ export function OpsDrill({
   onBack,
   shiftedLabelOf,
   onBulkCategorise,
+  onBulkDelete,
 }: {
   mode: "category" | "all";
   title: string;
@@ -41,6 +42,7 @@ export function OpsDrill({
   onBack: () => void;
   shiftedLabelOf?: (txn: Txn) => string | undefined;
   onBulkCategorise?: (txns: Txn[]) => void;
+  onBulkDelete?: (txns: Txn[]) => void;
 }) {
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -114,7 +116,7 @@ export function OpsDrill({
             {shown.length} opérations · {eur(total)}
           </div>
         </div>
-        {onBulkCategorise && shown.length > 0 && (
+        {(onBulkCategorise || onBulkDelete) && shown.length > 0 && (
           <button
             type="button"
             onClick={() => (selecting ? leaveSelection() : setSelecting(true))}
@@ -244,10 +246,22 @@ export function OpsDrill({
       {selecting && (
         <BulkBar
           count={selected.size}
-          onPick={() => {
-            onBulkCategorise?.(shown.filter((t) => selected.has(t.id)));
-            leaveSelection();
-          }}
+          onPick={
+            onBulkCategorise
+              ? () => {
+                  onBulkCategorise(shown.filter((t) => selected.has(t.id)));
+                  leaveSelection();
+                }
+              : undefined
+          }
+          onDelete={
+            onBulkDelete
+              ? () => {
+                  onBulkDelete(shown.filter((t) => selected.has(t.id)));
+                  leaveSelection();
+                }
+              : undefined
+          }
           onClear={leaveSelection}
         />
       )}
