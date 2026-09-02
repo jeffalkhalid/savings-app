@@ -8,7 +8,7 @@ import {
   useCategories,
   useRecurringCharges,
 } from "@/lib/cockpit/hooks";
-import { merchantDrifts } from "@/lib/cockpit/drift";
+import { merchantDrifts, MIN_ANNUAL, MIN_MONTHS } from "@/lib/cockpit/drift";
 import type { Drift } from "@/lib/cockpit/drift";
 import { detectRecurring } from "@/lib/cockpit/recurring-detect";
 import { merchantKey } from "@/lib/cockpit/payee-key";
@@ -16,6 +16,7 @@ import { merchantSeries } from "@/lib/cockpit/merchants";
 import {
   createRecurringCharge,
   updateRecurringCharge,
+  listAllRecurringCharges,
 } from "@/lib/cockpit/recurring-charges-api";
 import { useBulkRecategorise } from "@/lib/cockpit/use-bulk-recategorise";
 import { useBulkDelete } from "@/lib/cockpit/use-bulk-delete";
@@ -27,7 +28,7 @@ import { currentMonth, eur, todayISO } from "@/lib/cockpit/format";
 
 export default function DerivePage() {
   const user = useAuth();
-  const { txns, loading, refetch } = useAllTransactions();
+  const { txns, loading, error, refetch } = useAllTransactions();
   const { categories } = useCategories();
   const { charges, loading: chargesLoading, refetch: refetchCharges } =
     useRecurringCharges();
@@ -90,8 +91,6 @@ export default function DerivePage() {
     setDrillQuery("");
   };
 
-  // Les montants attendus sont stockés en euros entiers dans toute l'app
-  // (voir EngagementsModal) : arrondir ici garde les deux écrans cohérents.
   const recale = async (d: Drift) => {
     const charge = chargeByKey.get(d.key);
     if (!charge) return;
@@ -100,10 +99,10 @@ export default function DerivePage() {
     try {
       await updateRecurringCharge(charge.id, {
         label: charge.label,
-        expectedAmount: Math.round(d.recent),
+        expectedAmount: d.recent,
         active: true,
       });
-      setNote(`${charge.label} attendu à ${eur(Math.round(d.recent))}`);
+      setNote(`${charge.label} attendu à ${eur(d.recent)}`);
     } catch (e) {
       setNote(e instanceof Error ? e.message : "Erreur");
       setNoteIsError(true);
@@ -113,16 +112,30 @@ export default function DerivePage() {
     }
   };
 
+  // Une récurrence suivie puis renommée par l'utilisateur, ensuite désactivée,
+  // ne doit pas voir son nom écrasé par le libellé brut de la banque quand on
+  // la reprend : on cherche d'abord la ligne inactive et on garde son label.
   const suivre = async (d: Drift) => {
     setBusy(true);
     setNoteIsError(false);
     try {
-      await createRecurringCharge(user.id, {
-        payeeKey: d.key,
-        label: d.label,
-        expectedAmount: Math.round(d.recent),
-      });
-      setNote(`${d.label} suivi à ${eur(Math.round(d.recent))}`);
+      const all = await listAllRecurringCharges(user.id);
+      const existing = all.find((c) => c.payee_key === d.key);
+      if (existing) {
+        await updateRecurringCharge(existing.id, {
+          label: existing.label,
+          expectedAmount: d.recent,
+          active: true,
+        });
+        setNote(`${existing.label} réactivé à ${eur(d.recent)}`);
+      } else {
+        await createRecurringCharge(user.id, {
+          payeeKey: d.key,
+          label: d.label,
+          expectedAmount: d.recent,
+        });
+        setNote(`${d.label} suivi à ${eur(d.recent)}`);
+      }
     } catch (e) {
       setNote(e instanceof Error ? e.message : "Erreur");
       setNoteIsError(true);
@@ -172,7 +185,14 @@ export default function DerivePage() {
             </p>
           )}
 
-          {ready && (
+          {error && (
+            <p className="text-accent text-[13px] mb-5">
+              L&apos;historique des opérations n&apos;a pas pu être chargé.
+              Réessaie plus tard.
+            </p>
+          )}
+
+          {ready && !error && (
             <>
               <h2 className="font-display text-[15px] mb-2">
                 Engagements suivis
@@ -183,7 +203,7 @@ export default function DerivePage() {
                     key={d.key}
                     drift={d}
                     actionVerb="Recaler"
-                    actionAmount={Math.round(d.recent)}
+                    actionAmount={d.recent}
                     onAction={() => recale(d)}
                     onOpen={() => openSheet(d.key)}
                     busy={busy}
@@ -191,8 +211,9 @@ export default function DerivePage() {
                 ))
               ) : (
                 <p className="text-ink-muted text-sm mb-5">
-                  Aucun engagement suivi n&apos;a 5 mois d&apos;historique, une
-                  hausse régulière et au moins 20 € d&apos;écart sur un an.
+                  Aucun engagement suivi n&apos;a {MIN_MONTHS} mois
+                  d&apos;historique, une hausse régulière et au moins{" "}
+                  {MIN_ANNUAL} € d&apos;écart sur un an.
                 </p>
               )}
 
@@ -205,7 +226,7 @@ export default function DerivePage() {
                     key={d.key}
                     drift={d}
                     actionVerb="Suivre"
-                    actionAmount={Math.round(d.recent)}
+                    actionAmount={d.recent}
                     onAction={() => suivre(d)}
                     onOpen={() => openSheet(d.key)}
                     busy={busy}
@@ -241,19 +262,12 @@ export default function DerivePage() {
           onClose={bulk.cancel}
         />
       )}
-      {del.note && (
-        <p
-          className={`text-[13px] mt-3 ${
-            del.noteIsError ? "text-accent" : "text-emerald"
-          }`}
-        >
-          {del.note}
-        </p>
-      )}
+      {del.note && <p className="text-[13px] mt-3 text-emerald">{del.note}</p>}
       {del.pending && (
         <ConfirmDeleteSheet
           txns={del.pending}
           busy={del.busy}
+          error={del.error}
           onConfirm={del.confirm}
           onClose={del.cancel}
         />

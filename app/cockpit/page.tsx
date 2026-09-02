@@ -101,13 +101,20 @@ export default function DashboardPage() {
   const { categories, refetch: refetchCategories } = useCategories();
   const { budgets, refetch: refetchBudgets } = useCategoryBudgets();
   const { charges, loading: chargesLoading, refetch: refetchCharges } = useRecurringCharges();
-  const { txns: allTxns } = useAllTransactions();
+  const { txns: allTxns, refetch: refetchAllTxns } = useAllTransactions();
   const { accounts } = useAccounts();
   const { rows: monthlyByCat, error: catError } = useMonthlyByCategory(user.id);
   const { reminders, refetch: refetchReminders } = useReminders();
   const { goals } = useGoals();
-  const bulk = useBulkRecategorise(user.id, refetch);
-  const del = useBulkDelete(refetch);
+  // `detectRecurring(allTxns, month)` alimente le panneau « Détectés » : après
+  // une action en masse, l'historique complet doit être rechargé en plus du
+  // mois affiché, sinon les candidats restent bâtis sur des lignes supprimées.
+  const refetchAfterBulk = useCallback(() => {
+    refetch();
+    refetchAllTxns();
+  }, [refetch, refetchAllTxns]);
+  const bulk = useBulkRecategorise(user.id, refetchAfterBulk);
+  const del = useBulkDelete(refetchAfterBulk);
 
   const engagementKeys = useMemo(
     () => new Set(charges.map((c) => c.payee_key)),
@@ -490,19 +497,12 @@ export default function DashboardPage() {
           onClose={bulk.cancel}
         />
       )}
-      {del.note && (
-        <p
-          className={`text-[13px] mb-3 ${
-            del.noteIsError ? "text-accent" : "text-emerald"
-          }`}
-        >
-          {del.note}
-        </p>
-      )}
+      {del.note && <p className="text-[13px] mb-3 text-emerald">{del.note}</p>}
       {del.pending && (
         <ConfirmDeleteSheet
           txns={del.pending}
           busy={del.busy}
+          error={del.error}
           onConfirm={del.confirm}
           onClose={del.cancel}
         />

@@ -21,11 +21,13 @@ const fmtDate = (d: string) =>
 export function ConfirmDeleteSheet({
   txns,
   busy,
+  error,
   onConfirm,
   onClose,
 }: {
   txns: Txn[];
   busy: boolean;
+  error?: string | null;
   onConfirm: () => void;
   onClose: () => void;
 }) {
@@ -88,23 +90,39 @@ export function ConfirmDeleteSheet({
           </span>
         </div>
 
+        {error && (
+          <p className="text-accent text-[12.5px] mb-3">{error}</p>
+        )}
+
         <div className="flex gap-3">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={busy}
-            className="flex-1 bg-seg text-ink rounded-lg py-3 text-[13px] font-semibold disabled:opacity-50"
-          >
-            Annuler
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            disabled={busy}
-            className="flex-1 bg-accent text-paper rounded-lg py-3 text-[13px] font-semibold disabled:opacity-50"
-          >
-            {busy ? "Suppression…" : "Supprimer"}
-          </button>
+          {error ? (
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 bg-seg text-ink rounded-lg py-3 text-[13px] font-semibold"
+            >
+              Fermer
+            </button>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={busy}
+                className="flex-1 bg-seg text-ink rounded-lg py-3 text-[13px] font-semibold disabled:opacity-50"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={onConfirm}
+                disabled={busy}
+                className="flex-1 bg-accent text-paper rounded-lg py-3 text-[13px] font-semibold disabled:opacity-50"
+              >
+                {busy ? "Suppression…" : "Supprimer"}
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>

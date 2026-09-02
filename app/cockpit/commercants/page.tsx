@@ -220,19 +220,12 @@ export default function CommercantsPage() {
         />
       )}
 
-      {del.note && (
-        <p
-          className={`text-[13px] mt-3 ${
-            del.noteIsError ? "text-accent" : "text-emerald"
-          }`}
-        >
-          {del.note}
-        </p>
-      )}
+      {del.note && <p className="text-[13px] mt-3 text-emerald">{del.note}</p>}
       {del.pending && (
         <ConfirmDeleteSheet
           txns={del.pending}
           busy={del.busy}
+          error={del.error}
           onConfirm={del.confirm}
           onClose={del.cancel}
         />
