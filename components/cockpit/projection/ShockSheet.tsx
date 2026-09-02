@@ -1,0 +1,164 @@
+"use client";
+
+import { useState } from "react";
+import type { Shock } from "@/lib/cockpit/shock";
+
+const KINDS: { v: Shock["kind"]; label: string }[] = [
+  { v: "revenu", label: "Perte de revenu" },
+  { v: "depense", label: "Dépense exceptionnelle" },
+  { v: "charges", label: "Hausse durable des charges" },
+  { v: "krach", label: "Krach de marché" },
+];
+
+export function ShockSheet({
+  onAdd,
+  onClose,
+}: {
+  onAdd: (s: Shock) => void;
+  onClose: () => void;
+}) {
+  const [kind, setKind] = useState<Shock["kind"]>("revenu");
+  const [start, setStart] = useState(12);
+  const [months, setMonths] = useState(6);
+  const [keep, setKeep] = useState(0);
+  const [amount, setAmount] = useState(15000);
+  const [monthly, setMonthly] = useState(250);
+  const [drop, setDrop] = useState(30);
+
+  const build = (): Shock => {
+    if (kind === "revenu")
+      return { kind, startMonth: start, months, keepPct: keep / 100 };
+    if (kind === "depense") return { kind, atMonth: start, amount };
+    if (kind === "charges") return { kind, startMonth: start, monthly };
+    return { kind: "krach", atMonth: start, dropPct: drop / 100 };
+  };
+
+  const field = "grid gap-1.5 text-[13px] text-ink-muted";
+  const input =
+    "bg-tile rounded-lg px-3 py-2.5 text-ink text-[15px] font-mono-num outline-none";
+
+  return (
+    <div
+      className="fixed inset-0 z-[1000] bg-black/50 flex items-end justify-center"
+      onClick={onClose}
+    >
+      <div
+        className="bg-paper w-full max-w-[600px] max-h-[85vh] overflow-auto px-6 pt-6 pb-10 rounded-t-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <header className="flex justify-between items-center mb-4">
+          <h2 className="font-display text-xl">Ajouter un choc</h2>
+          <button type="button" className="text-ink-muted text-sm" onClick={onClose}>
+            Fermer
+          </button>
+        </header>
+
+        <div className="grid gap-1.5 mb-5">
+          {KINDS.map((k) => (
+            <button
+              key={k.v}
+              type="button"
+              onClick={() => setKind(k.v)}
+              className={`text-left py-3 px-3 rounded-lg text-[14px] ${
+                kind === k.v ? "bg-emerald text-paper font-semibold" : "bg-seg text-ink"
+              }`}
+            >
+              {k.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="grid gap-4">
+          <label className={field}>
+            {kind === "charges" || kind === "revenu" ? "À partir de" : "Quand"} ·
+            dans {start} mois
+            <input
+              type="range"
+              min={1}
+              max={120}
+              step={1}
+              value={start}
+              onChange={(e) => setStart(Number(e.target.value))}
+            />
+          </label>
+
+          {kind === "revenu" && (
+            <>
+              <label className={field}>
+                Durée · {months} mois
+                <input
+                  type="range"
+                  min={1}
+                  max={36}
+                  step={1}
+                  value={months}
+                  onChange={(e) => setMonths(Number(e.target.value))}
+                />
+              </label>
+              <label className={field}>
+                Revenu maintenu · {keep} %
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  step={5}
+                  value={keep}
+                  onChange={(e) => setKeep(Number(e.target.value))}
+                />
+              </label>
+            </>
+          )}
+
+          {kind === "depense" && (
+            <label className={field}>
+              Montant
+              <input
+                type="number"
+                className={input}
+                value={amount}
+                onChange={(e) => setAmount(Number(e.target.value))}
+              />
+            </label>
+          )}
+
+          {kind === "charges" && (
+            <label className={field}>
+              Charge mensuelle supplémentaire
+              <input
+                type="number"
+                className={input}
+                value={monthly}
+                onChange={(e) => setMonthly(Number(e.target.value))}
+              />
+            </label>
+          )}
+
+          {kind === "krach" && (
+            <label className={field}>
+              Baisse du capital · {drop} %
+              <input
+                type="range"
+                min={5}
+                max={60}
+                step={5}
+                value={drop}
+                onChange={(e) => setDrop(Number(e.target.value))}
+              />
+            </label>
+          )}
+        </div>
+
+        <button
+          type="button"
+          onClick={() => {
+            onAdd(build());
+            onClose();
+          }}
+          className="w-full mt-6 bg-emerald text-paper rounded-lg py-3 text-[13px] font-semibold"
+        >
+          Ajouter
+        </button>
+      </div>
+    </div>
+  );
+}
