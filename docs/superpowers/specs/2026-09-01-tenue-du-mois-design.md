@@ -43,7 +43,12 @@ export type MonthPace = {
   parJour: number;
   /** Dépenses variables du mois ÷ jours écoulés. */
   rythmeVariable: number;
-  /** disponible − rythmeVariable × joursRestants. `null` avant le seuil. */
+  /**
+   * disponible − rythmeVariable × (joursRestants − 1). `null` avant le seuil.
+   * L'extrapolation porte sur les jours APRÈS aujourd'hui, pas sur
+   * `joursRestants` lui-même : la dépense du jour est déjà dans `variable`,
+   * donc dans `disponible`, et la recompter la compterait deux fois.
+   */
   finDeMois: number | null;
 };
 
@@ -57,14 +62,19 @@ export function monthPace(input: {
 
 - **`disponible` = `resteAVivre − pendingEngagements`.** C'est l'apport principal de cette
   fonctionnalité : le reste à vivre affiché aujourd'hui ignore ce qui va être prélevé.
-- **`joursRestants` inclut aujourd'hui** : on peut encore dépenser le jour même. Pour le 28 d'un
-  mois de 31 jours, `joursRestants` vaut 4 et `joursEcoules` 28.
+- **`joursRestants` inclut aujourd'hui** : on peut encore dépenser le jour même, donc le budget
+  journalier doit couvrir ce jour. Pour le 28 d'un mois de 31 jours, `joursRestants` vaut 4 et
+  `joursEcoules` 28.
 - **`parJour` est plancherisé à 0.** Un disponible négatif signifie que le mois est déjà dépassé ;
   afficher un budget journalier négatif n'apprendrait rien de plus que le disponible lui-même, qui
   porte déjà l'information.
-- **`rythmeVariable`** ne porte que sur les dépenses **variables**, jamais sur les engagements : ces
-  derniers sont déjà comptés une fois dans `pendingEngagements`, les extrapoler les compterait deux
-  fois.
+- **`rythmeVariable`** est calculé sur le plus petit de deux majorants du variable réellement
+  variable : les dépenses du mois moins les engagements **confirmés** (`totals.variable`, côté
+  Cockpit), et les dépenses des catégories non marquées fixes (confirmées ou non). Le premier laisse
+  passer un engagement pas encore confirmé — un loyer non pointé se retrouve extrapolé sur le reste
+  du mois. Le second laisse passer un engagement confirmé mais rangé dans une catégorie non marquée
+  fixe. Aucun des deux n'est fiable seul ; le plus petit des deux est le majorant le plus serré que
+  les données actuelles permettent de calculer.
 
 ### 3.1 Le seuil de projection
 
@@ -79,9 +89,11 @@ un chiffre affolant sans fondement.
 
 ## 4. L'affichage
 
-Une **carte sur le Cockpit**, placée près du reste à vivre dont elle est le prolongement. Pas
-d'écran séparé : c'est une question qu'on se pose en regardant ses comptes, pas une analyse qu'on
-va chercher. La barre de navigation compte de toute façon déjà cinq onglets.
+Une **carte sur le Cockpit**, placée juste après la barre « Engagements & variable », dont elle est
+le prolongement : elle reprend `pending` et `variable`, les deux chiffres que cette barre affiche
+déjà, pour répondre à la question que ces chiffres seuls ne tranchent pas. Pas d'écran séparé :
+c'est une question qu'on se pose en regardant ses comptes, pas une analyse qu'on va chercher. La
+barre de navigation compte de toute façon déjà cinq onglets.
 
 La carte porte, par ordre d'importance visuelle :
 

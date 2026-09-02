@@ -512,18 +512,23 @@ export function useAllocationTargets(userId: string) {
 
 export function useRecurringCharges() {
   const [charges, setCharges] = useState<RecurringCharge[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const refetch = useCallback(() => {
+    setLoading(true);
     supabase
       .from("recurring_charges")
       .select("id,payee_key,label,expected_amount,active")
       .eq("active", true)
-      .then(({ data }) => setCharges((data as RecurringCharge[]) ?? []));
+      .then(({ data }) => {
+        setCharges((data as RecurringCharge[]) ?? []);
+        setLoading(false);
+      });
   }, []);
 
   useEffect(() => {
     refetch();
   }, [refetch]);
 
-  return { charges, refetch };
+  return { charges, loading, refetch };
 }
