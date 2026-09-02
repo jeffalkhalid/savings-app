@@ -114,8 +114,10 @@ ajusté à la main : perdre son salaire retranche le salaire mesuré, quel que s
 
 - **`trough`** : le mois de valeur minimale de la trajectoire choquée, et cette valeur.
 - **`recoveryMonths`** : soit `L` la valeur de la trajectoire choquée au mois précédant le premier
-  choc. Le délai est le nombre de mois entre le premier choc et le premier mois ultérieur où la
-  trajectoire repasse au-dessus de `L`. Deux cas particuliers, tous deux à afficher franchement :
+  choc. Le délai est le nombre de mois entre le premier choc et le premier mois **postérieur au
+  creux** où la trajectoire repasse au-dessus de `L`. Postérieur au creux et non au premier choc :
+  sur un scénario à plusieurs chocs, la courbe peut remonter puis replonger, et le délai qui
+  intéresse est celui du retour durable, pas d'une embellie passagère. Deux cas particuliers, tous deux à afficher franchement :
   - si la trajectoire ne redescend jamais sous `L` (une hausse de charges ne fait que ralentir la
     croissance), le délai vaut **0** ;
   - si elle n'y revient pas avant l'horizon, il vaut **`null`** — et l'écran dit « pas de retour au
