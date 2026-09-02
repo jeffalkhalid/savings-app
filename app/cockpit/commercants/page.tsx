@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Store, ArrowDown, ArrowUp } from "lucide-react";
+import { ArrowDown, ArrowUp } from "lucide-react";
 import Link from "next/link";
 import { useAllTransactions, useAuth, useCategories } from "@/lib/cockpit/hooks";
 import {
@@ -14,10 +14,9 @@ import { merchantKey } from "@/lib/cockpit/payee-key";
 import { useBulkRecategorise } from "@/lib/cockpit/use-bulk-recategorise";
 import { useBulkDelete } from "@/lib/cockpit/use-bulk-delete";
 import { MerchantList } from "@/components/cockpit/MerchantList";
-import { MerchantSeriesBars } from "@/components/cockpit/MerchantSeriesBars";
+import { MerchantSheet } from "@/components/cockpit/MerchantSheet";
 import { CategoryPickerSheet } from "@/components/cockpit/CategoryPickerSheet";
 import { ConfirmDeleteSheet } from "@/components/cockpit/ConfirmDeleteSheet";
-import { OpsDrill } from "@/components/cockpit/OpsDrill";
 import { eur } from "@/lib/cockpit/format";
 import type { TxnType } from "@/lib/cockpit/types";
 
@@ -111,33 +110,18 @@ export default function CommercantsPage() {
   return (
     <main className="max-w-[600px] mx-auto px-5 pt-8 pb-24">
       {selected ? (
-        <>
-          {selected.lastDate && (
-            <p className="text-[13px] text-ink-muted mb-2">
-              Dernière opération le{" "}
-              {new Date(`${selected.lastDate}T00:00:00`).toLocaleDateString(
-                "fr-FR",
-                { day: "numeric", month: "long", year: "numeric" }
-              )}
-            </p>
-          )}
-          <MerchantSeriesBars series={series} />
-          <OpsDrill
-            mode="category"
-            title={selected.label}
-            Icon={Store}
-            txns={selectedTxns}
-            categories={categories.filter((c) => c.active !== false)}
-            query={drillQuery}
-            onQuery={setDrillQuery}
-            chip={null}
-            onChip={() => {}}
-            onSelectTxn={() => {}}
-            onBack={closeMerchant}
-            onBulkCategorise={bulk.start}
-            onBulkDelete={del.start}
-          />
-        </>
+        <MerchantSheet
+          label={selected.label}
+          lastDate={selected.lastDate}
+          series={series}
+          txns={selectedTxns}
+          categories={categories.filter((c) => c.active !== false)}
+          query={drillQuery}
+          onQuery={setDrillQuery}
+          onBack={closeMerchant}
+          onBulkCategorise={bulk.start}
+          onBulkDelete={del.start}
+        />
       ) : (
         <>
           <header className="mb-4">
