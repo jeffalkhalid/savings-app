@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  AreaChart,
+  ComposedChart,
   Area,
   Line,
   XAxis,
@@ -23,6 +23,12 @@ import type { MonthPoint } from "@/lib/cockpit/shock";
  * Le domaine Y utilise une fonction pour ancrer l'étage à zéro quand la
  * trajectoire reste positive (comportement par défaut recharts), tout en
  * admettant les valeurs négatives quand un choc érode le capital.
+ */
+/**
+ * `ComposedChart` et non `AreaChart` : recharts ne rend pour `AreaChart` que
+ * les enfants de type `Area` (`GraphicalChild: Area` dans sa définition). Un
+ * `<Line>` y est ignoré SANS erreur — la courbe choquée était absente alors
+ * que le bilan chiffré, lui, s'affichait.
  */
 export function ProjectionChart({
   series,
@@ -65,7 +71,7 @@ export function ProjectionChart({
       )}
       <div className="h-52">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={data} margin={{ top: 8, right: 4, bottom: 0, left: 4 }}>
+          <ComposedChart data={data} margin={{ top: 8, right: 4, bottom: 0, left: 4 }}>
             <defs>
               <linearGradient id="projGrad" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="#3E7D5A" stopOpacity={0.28} />
@@ -105,7 +111,7 @@ export function ProjectionChart({
                 dot={false}
               />
             )}
-          </AreaChart>
+          </ComposedChart>
         </ResponsiveContainer>
       </div>
     </div>
