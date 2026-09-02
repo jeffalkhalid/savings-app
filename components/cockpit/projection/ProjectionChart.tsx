@@ -3,23 +3,44 @@
 import {
   AreaChart,
   Area,
+  Line,
   XAxis,
   YAxis,
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
 import { eur } from "@/lib/cockpit/format";
+import type { MonthPoint } from "@/lib/cockpit/shock";
 
+/**
+ * Trajectoire de patrimoine, au mois.
+ *
+ * L'axe est en mois et non en années : un choc de six mois est en partie
+ * résorbé à l'anniversaire suivant, donc un tracé annuel masquerait le creux
+ * que cet écran existe pour montrer. Les graduations restent annuelles pour
+ * rester lisibles.
+ */
 export function ProjectionChart({
   series,
+  shocked,
 }: {
-  series: { year: number; value: number }[];
+  series: MonthPoint[];
+  shocked?: MonthPoint[] | null;
 }) {
+  const data = series.map((p, i) => ({
+    month: p.month,
+    value: p.value,
+    shocked: shocked ? shocked[i]?.value : undefined,
+  }));
+  const ticks = series
+    .filter((p) => p.month % 12 === 0)
+    .map((p) => p.month);
+
   return (
     <div className="bg-card rounded-2xl p-4 mb-4">
       <div className="h-52">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={series} margin={{ top: 8, right: 4, bottom: 0, left: 4 }}>
+          <AreaChart data={data} margin={{ top: 8, right: 4, bottom: 0, left: 4 }}>
             <defs>
               <linearGradient id="projGrad" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="#3E7D5A" stopOpacity={0.28} />
@@ -27,16 +48,21 @@ export function ProjectionChart({
               </linearGradient>
             </defs>
             <XAxis
-              dataKey="year"
+              dataKey="month"
+              type="number"
+              domain={[0, series[series.length - 1]?.month ?? 0]}
+              ticks={ticks}
               tick={{ fontSize: 10, fill: "#9A8E7C" }}
               tickLine={false}
               axisLine={false}
-              tickFormatter={(y: number) => `${y}a`}
+              tickFormatter={(m: number) => `${m / 12}a`}
             />
-            <YAxis hide />
+            <YAxis hide domain={["auto", "auto"]} />
             <Tooltip
-              formatter={(v: number) => eur(v)}
-              labelFormatter={(y) => `Année ${y}`}
+              formatter={(v: number, name: string) =>
+                [eur(v), name === "shocked" ? "avec chocs" : "référence"]
+              }
+              labelFormatter={(m: number) => `Mois ${m}`}
             />
             <Area
               type="monotone"
@@ -45,6 +71,15 @@ export function ProjectionChart({
               strokeWidth={2.5}
               fill="url(#projGrad)"
             />
+            {shocked && (
+              <Line
+                type="monotone"
+                dataKey="shocked"
+                stroke="#B45342"
+                strokeWidth={2}
+                dot={false}
+              />
+            )}
           </AreaChart>
         </ResponsiveContainer>
       </div>
