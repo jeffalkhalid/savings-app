@@ -31,9 +31,13 @@ le choc ne se manifeste qu'au dépôt de fin d'année, et la date de creux promi
 
 Le moteur devient donc mensuel : capitalisation au taux mensuel équivalent, flux déposé chaque mois.
 C'est plus fidèle à la réalité — l'utilisateur épargne tous les mois — mais **les chiffres actuels de
-la Projection changeront**, d'environ 1 % à la hausse sur dix ans, parce que déposer chaque mois
-rapporte davantage que déposer une fois l'an. L'utilisateur a validé ce déplacement en connaissance
-de cause.
+la Projection changeront**, parce que déposer chaque mois rapporte davantage que déposer une fois
+l'an. L'écart n'est pas un pourcentage fixe : il dépend de la **part de la valeur finale qui vient
+des cotisations** et du **taux**, pas de l'horizon — il est le même à dix ans et à quarante. Il va de
+nul pour un patrimoine qui n'est que du capital placé sans nouvel apport (rien à décaler dans le
+calendrier), jusqu'à environ 4,5 % au taux le plus haut qu'offre le curseur (10 %) pour une
+trajectoire dominée par les cotisations. L'utilisateur a validé ce déplacement en connaissance de
+cause.
 
 `projectNetWorth` et ses neuf tests **restent en place** : la fonction devient la référence contre
 laquelle le moteur mensuel est épinglé (voir §6), et non plus une dépendance de l'écran.
@@ -112,7 +116,12 @@ ajusté à la main : perdre son salaire retranche le salaire mesuré, quel que s
 
 ### 4.3 Le bilan
 
-- **`trough`** : le mois de valeur minimale de la trajectoire choquée, et cette valeur.
+- **`trough`** : le mois de valeur minimale de la trajectoire choquée **sur la fenêtre postérieure au
+  premier choc**, et cette valeur — pas le minimum de la trajectoire entière. Sans cette restriction,
+  dès qu'un choc ne fait pas passer le capital sous son niveau de départ (le cas le plus courant, la
+  trajectoire ayant déjà grossi avant que le choc ne frappe), le minimum global resterait le mois 0 :
+  l'écran afficherait le patrimoine d'aujourd'hui comme « creux » et un délai de retour négatif,
+  antérieur au choc lui-même.
 - **`recoveryMonths`** : soit `L` la valeur de la trajectoire choquée au mois précédant le premier
   choc. Le délai est le nombre de mois entre le premier choc et le premier mois **postérieur au
   creux** où la trajectoire repasse au-dessus de `L`. Postérieur au creux et non au premier choc :
