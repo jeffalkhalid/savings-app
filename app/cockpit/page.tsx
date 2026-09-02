@@ -41,7 +41,7 @@ import { CategoryBreakdown } from "@/components/cockpit/CategoryBreakdown";
 import { EngagementsBar } from "@/components/cockpit/EngagementsBar";
 import { MonthPaceCard } from "@/components/cockpit/MonthPaceCard";
 import { monthPace } from "@/lib/cockpit/pace";
-import { fixedVariableFromInsights } from "@/lib/cockpit/fixed";
+import { nonFixedExpenseTotal } from "@/lib/cockpit/fixed";
 import { EngagementsModal } from "@/components/cockpit/EngagementsModal";
 import { TransferTriage } from "@/components/cockpit/TransferTriage";
 import { TransferNudge } from "@/components/cockpit/TransferNudge";
@@ -143,28 +143,36 @@ export default function DashboardPage() {
       new Set(categories.filter((c) => c.is_fixed).map((c) => c.id)),
     [categories]
   );
-  // `totals.variable` (dépenses moins engagements CONFIRMÉS) et le variable
-  // tiré des insights (dépenses hors catégories fixes, confirmées ou non)
-  // sont chacun un majorant du variable réellement variable — le premier
-  // laisse passer un loyer non confirmé, le second laisse passer un
-  // engagement confirmé dans une catégorie non marquée fixe. Le plus petit
-  // des deux est donc le majorant le plus serré que les données existantes
-  // permettent. Sans aucune catégorie marquée fixe, ce minimum dégénère vers
-  // `totals.variable` : le comportement actuel, inchangé.
-  const insightsVariable = useMemo(
-    () => fixedVariableFromInsights(insights, fixedCategoryIds).variable,
-    [insights, fixedCategoryIds]
+  // `totals.variable` et `nonFixedVariable` partitionnent le même ensemble de
+  // dépenses (les `txns` du mois budgétaire courant, même source, même
+  // fraîcheur) selon deux critères différents — le premier exclut les
+  // engagements CONFIRMÉS, le second exclut les catégories marquées fixes,
+  // confirmées ou non. Chacun pris seul est un majorant du variable
+  // réellement variable ; le plus petit des deux est donc le majorant le
+  // plus serré que les données existantes permettent. Sans aucune catégorie
+  // marquée fixe, ce minimum dégénère vers `totals.variable` : le
+  // comportement actuel, inchangé.
+  const nonFixedVariable = useMemo(
+    () => nonFixedExpenseTotal(txns, fixedCategoryIds),
+    [txns, fixedCategoryIds]
   );
   const pace = useMemo(
     () =>
       monthPace({
         resteAVivre: metrics.resteAVivre,
         pendingEngagements: totals.pending,
-        variable: Math.min(totals.variable, insightsVariable),
+        variable: Math.min(totals.variable, nonFixedVariable),
         today,
       }),
-    [metrics.resteAVivre, totals.pending, totals.variable, insightsVariable, today]
+    [metrics.resteAVivre, totals.pending, totals.variable, nonFixedVariable, today]
   );
+  // Ne masque la carte que sur le CHARGEMENT INITIAL de chacune des deux
+  // sources : `loading` repasse à vrai à chaque refetch (confirmer un
+  // engagement, ajouter une transaction), et si on masquait sur `loading`
+  // seul la carte clignoterait à chaque fois. Une fois qu'on a des données,
+  // un refetch en cours ne doit plus la cacher.
+  const paceReady =
+    (!txnsLoading || txns.length > 0) && (!chargesLoading || charges.length > 0);
   const candidates = useMemo(() => {
     const confirmed = new Set(charges.map((c) => c.payee_key));
     return detectRecurring(allTxns, month).filter(
@@ -343,9 +351,7 @@ export default function DashboardPage() {
               onDrill={() => setShowFixed(true)}
             />
           )}
-          {isCurrentMonth && !txnsLoading && !chargesLoading && (
-            <MonthPaceCard pace={pace} />
-          )}
+          {isCurrentMonth && paceReady && <MonthPaceCard pace={pace} />}
           {catError && (
             <p className="text-ink-muted text-xs mb-2">
               Répartition indisponible — réessaie plus tard.
