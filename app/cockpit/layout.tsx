@@ -8,6 +8,7 @@ import {
 } from "@/lib/cockpit/hooks";
 import { LoginForm } from "@/components/cockpit/LoginForm";
 import { TabBar } from "@/components/cockpit/TabBar";
+import { HomeButton } from "@/components/cockpit/HomeButton";
 import { ThemeProvider } from "@/components/cockpit/ThemeProvider";
 
 function Loading({ text }: { text: string }) {
@@ -30,6 +31,7 @@ function SeededShell({
   return (
     <ThemeProvider>
       <AuthContext.Provider value={user}>
+        <HomeButton />
         <div className="min-h-screen pb-24">{children}</div>
         <TabBar />
       </AuthContext.Provider>
