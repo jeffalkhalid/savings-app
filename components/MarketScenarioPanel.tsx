@@ -12,6 +12,12 @@ function describe(s: MarketShock): string {
   } an${s.years > 1 ? "s" : ""} dès l'année ${s.startYear}`;
 }
 
+/** Un choc daté au-delà de l'horizon n'est plus simulé — il ne doit pas se lire comme actif. */
+function outOfHorizon(s: MarketShock, years: number): boolean {
+  const start = s.kind === "krach" ? s.atYear : s.startYear;
+  return start < 0 || start >= years;
+}
+
 export function MarketScenarioPanel({
   shocks,
   years,
@@ -32,10 +38,14 @@ export function MarketScenarioPanel({
   const add = () => {
     const s: MarketShock =
       kind === "krach"
-        ? { kind, atYear: Math.min(at, maxYear), dropPct: drop / 100 }
+        ? {
+            kind,
+            atYear: Math.min(Math.max(0, at), maxYear),
+            dropPct: drop / 100,
+          }
         : {
             kind: "rendement",
-            startYear: Math.min(at, maxYear),
+            startYear: Math.min(Math.max(0, at), maxYear),
             years: span,
             rate: degraded / 100,
           };
@@ -69,22 +79,36 @@ export function MarketScenarioPanel({
         </p>
       )}
 
-      {shocks.map((s, i) => (
-        <div
-          key={i}
-          className="flex items-center gap-2 py-2 border-b border-rule"
-        >
-          <span className="text-xs text-ink flex-1">{describe(s)}</span>
-          <button
-            type="button"
-            aria-label="Retirer ce choc"
-            onClick={() => onChange(shocks.filter((_, j) => j !== i))}
-            className="text-ink-muted p-1"
+      {shocks.map((s, i) => {
+        const orphan = outOfHorizon(s, years);
+        return (
+          <div
+            key={i}
+            className="flex items-center gap-2 py-2 border-b border-rule"
           >
-            <X size={13} />
-          </button>
-        </div>
-      ))}
+            <span
+              className={`text-xs flex-1 ${
+                orphan ? "text-ink-muted line-through" : "text-ink"
+              }`}
+            >
+              {describe(s)}
+            </span>
+            {orphan && (
+              <span className="text-[11px] text-accent whitespace-nowrap">
+                hors horizon
+              </span>
+            )}
+            <button
+              type="button"
+              aria-label="Retirer ce choc"
+              onClick={() => onChange(shocks.filter((_, j) => j !== i))}
+              className="text-ink-muted p-1"
+            >
+              <X size={13} />
+            </button>
+          </div>
+        );
+      })}
 
       {open && (
         <div className="mt-3 grid gap-3">
