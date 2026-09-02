@@ -71,7 +71,7 @@ export function ShockSheet({
         <div className="grid gap-4">
           <label className={field}>
             {kind === "charges" || kind === "revenu" ? "À partir de" : "Quand"} ·
-            dans {start} mois
+            dans <span className="font-mono-num">{start}</span> mois
             <input
               type="range"
               min={1}
@@ -85,7 +85,7 @@ export function ShockSheet({
           {kind === "revenu" && (
             <>
               <label className={field}>
-                Durée · {months} mois
+                Durée · <span className="font-mono-num">{months}</span> mois
                 <input
                   type="range"
                   min={1}
@@ -96,7 +96,7 @@ export function ShockSheet({
                 />
               </label>
               <label className={field}>
-                Revenu maintenu · {keep} %
+                Revenu maintenu · <span className="font-mono-num">{keep}</span> %
                 <input
                   type="range"
                   min={0}
@@ -135,7 +135,7 @@ export function ShockSheet({
 
           {kind === "krach" && (
             <label className={field}>
-              Baisse du capital · {drop} %
+              Baisse du capital · <span className="font-mono-num">{drop}</span> %
               <input
                 type="range"
                 min={5}

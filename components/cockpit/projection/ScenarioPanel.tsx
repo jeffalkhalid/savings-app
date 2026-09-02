@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { Plus, X } from "lucide-react";
 import { eur } from "@/lib/cockpit/format";
 import type { Shock, ShockSummary } from "@/lib/cockpit/shock";
@@ -12,16 +13,35 @@ function monthLabel(offset: number): string {
   return d.toLocaleDateString("fr-FR", { month: "short", year: "numeric" });
 }
 
-function describe(s: Shock): string {
+function describe(s: Shock): ReactNode {
   if (s.kind === "revenu")
-    return `Perte de revenu · ${s.months} mois dès ${monthLabel(s.startMonth)}${
-      s.keepPct > 0 ? ` · ${Math.round(s.keepPct * 100)} % maintenus` : ""
-    }`;
+    return (
+      <>
+        Perte de revenu · <span className="font-mono-num">{s.months}</span> mois dès {monthLabel(s.startMonth)}
+        {s.keepPct > 0 && (
+          <>
+            {" "}· <span className="font-mono-num">{Math.round(s.keepPct * 100)}</span> % maintenus
+          </>
+        )}
+      </>
+    );
   if (s.kind === "depense")
-    return `Dépense de ${eur(s.amount)} · ${monthLabel(s.atMonth)}`;
+    return (
+      <>
+        Dépense de <span className="font-mono-num">{eur(s.amount)}</span> · {monthLabel(s.atMonth)}
+      </>
+    );
   if (s.kind === "charges")
-    return `Charges +${eur(s.monthly)}/mois dès ${monthLabel(s.startMonth)}`;
-  return `Krach de ${Math.round(s.dropPct * 100)} % · ${monthLabel(s.atMonth)}`;
+    return (
+      <>
+        Charges +<span className="font-mono-num">{eur(s.monthly)}</span>/mois dès {monthLabel(s.startMonth)}
+      </>
+    );
+  return (
+    <>
+      Krach de <span className="font-mono-num">{Math.round(s.dropPct * 100)}</span> % · {monthLabel(s.atMonth)}
+    </>
+  );
 }
 
 export function ScenarioPanel({
@@ -100,6 +120,10 @@ export function ScenarioPanel({
               </div>
             </div>
           )}
+
+          <p className="text-[11.5px] text-ink-muted mt-2">
+            Scénario non enregistré : il disparaît en quittant l&apos;écran.
+          </p>
         </>
       )}
     </section>
