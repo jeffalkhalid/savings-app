@@ -18,6 +18,26 @@ export function averageMonthlyNet(txns: Txn[]): number {
   return sum / byMonth.size;
 }
 
+/**
+ * Revenu mensuel moyen sur les mois où il y en a eu.
+ *
+ * Sert à chiffrer ce qu'une perte d'emploi retranche au flux. Un mois sans
+ * revenu n'est pas compté comme un zéro : il tirerait la moyenne vers le bas
+ * et sous-estimerait le choc.
+ */
+export function averageMonthlyIncome(txns: Txn[]): number {
+  const byMonth = new Map<string, number>();
+  for (const t of txns) {
+    if (t.type !== "income") continue;
+    const month = t.date.slice(0, 7);
+    byMonth.set(month, (byMonth.get(month) ?? 0) + Math.abs(Number(t.amount)));
+  }
+  if (byMonth.size === 0) return 0;
+  let sum = 0;
+  for (const v of byMonth.values()) sum += v;
+  return sum / byMonth.size;
+}
+
 // Capitalisation annuelle, annuité de fin de période.
 // value(t) = initial*(1+r)^t + C*((1+r)^t - 1)/r ; r=0 => initial + C*t ; t=0 => initial.
 export function projectNetWorth(input: {

@@ -7,6 +7,7 @@ import {
   monthRange,
   axisMonthLabel,
   tooltipMonthLabel,
+  monthOffsetLabel,
 } from "./format";
 
 describe("eur", () => {
@@ -46,6 +47,22 @@ describe("tooltipMonthLabel", () => {
     expect(last).not.toBe(current);
     expect(last).toBe("août 25");
     expect(current).toBe("août 26");
+  });
+});
+
+describe("monthOffsetLabel", () => {
+  it("l'offset 0 est le mois courant", () => {
+    expect(monthOffsetLabel(0, new Date(2026, 8, 15))).toBe("sept. 2026");
+  });
+
+  it("un offset positif atterrit sur le bon mois", () => {
+    expect(monthOffsetLabel(14, new Date(2026, 8, 15))).toBe("nov. 2027");
+  });
+
+  it("fixe le jour au 1er avant d'ajouter les mois, pour que le 31 ne fasse pas rouler le mois", () => {
+    // 31 janvier + 1 mois : sans le recadrage au 1er, `setMonth` roulerait
+    // vers mars (28/29 jours en février) au lieu de rendre février.
+    expect(monthOffsetLabel(1, new Date(2026, 0, 31))).toBe("févr. 2026");
   });
 });
 

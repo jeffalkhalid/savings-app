@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { averageMonthlyNet, projectNetWorth } from "./projection";
+import {
+  averageMonthlyNet,
+  averageMonthlyIncome,
+  projectNetWorth,
+} from "./projection";
 import type { Txn } from "./types";
 
 const tx = (type: Txn["type"], amount: number, date: string): Txn => ({
@@ -96,5 +100,42 @@ describe("projectNetWorth", () => {
       years: 2,
     });
     expect(s[2].value).toBeCloseTo(1210);
+  });
+});
+
+describe("averageMonthlyIncome", () => {
+  it("moyenne les revenus sur les mois observés", () => {
+    expect(
+      averageMonthlyIncome([
+        tx("income", 3000, "2026-04-02"),
+        tx("expense", -1000, "2026-04-10"),
+        tx("income", 3200, "2026-05-02"),
+      ])
+    ).toBeCloseTo(3100);
+  });
+
+  it("ne compte pas un mois sans revenu comme un zéro", () => {
+    // Un mois qui n'a que des dépenses ne doit pas diluer la moyenne : le
+    // revenu mesuré sert à chiffrer ce qu'une perte d'emploi retranche.
+    expect(
+      averageMonthlyIncome([
+        tx("income", 3000, "2026-04-02"),
+        tx("expense", -1000, "2026-05-10"),
+      ])
+    ).toBeCloseTo(3000);
+  });
+
+  it("ignore virements et épargne", () => {
+    expect(
+      averageMonthlyIncome([
+        tx("income", 2000, "2026-04-02"),
+        tx("transfer", 900, "2026-04-03"),
+        tx("savings", -500, "2026-04-04"),
+      ])
+    ).toBeCloseTo(2000);
+  });
+
+  it("rend 0 sans transaction", () => {
+    expect(averageMonthlyIncome([])).toBe(0);
   });
 });

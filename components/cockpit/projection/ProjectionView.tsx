@@ -1,8 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { projectNetWorth } from "@/lib/cockpit/projection";
 import { simulateMonteCarlo } from "@/lib/cockpit/monte-carlo";
+import {
+  projectMonthly,
+  summarise,
+  firstShockMonth,
+  type Shock,
+} from "@/lib/cockpit/shock";
 import { ProjectionHero } from "./ProjectionHero";
 import { ProjectionChart } from "./ProjectionChart";
 import { ProjectionControls } from "./ProjectionControls";
@@ -10,14 +15,18 @@ import { ProjectionModeToggle } from "./ProjectionModeToggle";
 import { RiskProfilePicker } from "./RiskProfilePicker";
 import { MonteCarloChart } from "./MonteCarloChart";
 import { MonteCarloHero } from "./MonteCarloHero";
+import { ScenarioPanel } from "./ScenarioPanel";
+import { ShockSheet } from "./ShockSheet";
 
 export function ProjectionView({
   avgFlow,
   initial,
+  monthlyIncome,
   txnError,
 }: {
   avgFlow: number;
   initial: number;
+  monthlyIncome: number;
   txnError: string | null;
 }) {
   const [monthlyFlow, setMonthlyFlow] = useState(0);
@@ -29,6 +38,8 @@ export function ProjectionView({
   );
   const [sigma, setSigma] = useState(0.12);
   const [profile, setProfile] = useState<string | null>(null);
+  const [shocks, setShocks] = useState<Shock[]>([]);
+  const [showShockSheet, setShowShockSheet] = useState(false);
 
   useEffect(() => {
     if (!flowTouched && avgFlow) setMonthlyFlow(avgFlow);
@@ -36,11 +47,45 @@ export function ProjectionView({
 
   const annualContribution = monthlyFlow * 12;
 
-  const series = useMemo(
-    () => projectNetWorth({ initial, annualContribution, rate, years }),
-    [initial, annualContribution, rate, years]
+  const monthlyBase = useMemo(
+    () =>
+      projectMonthly({
+        initial,
+        monthlyFlow,
+        monthlyIncome,
+        rate,
+        years,
+        shocks: [],
+      }),
+    [initial, monthlyFlow, monthlyIncome, rate, years]
   );
-  const projected = series[series.length - 1].value;
+  const monthlyShocked = useMemo(
+    () =>
+      shocks.length
+        ? projectMonthly({
+            initial,
+            monthlyFlow,
+            monthlyIncome,
+            rate,
+            years,
+            shocks,
+          })
+        : null,
+    [initial, monthlyFlow, monthlyIncome, rate, years, shocks]
+  );
+  const summary = useMemo(
+    () =>
+      monthlyShocked
+        ? summarise(monthlyBase, monthlyShocked, firstShockMonth(shocks))
+        : null,
+    [monthlyBase, monthlyShocked, shocks]
+  );
+  // Le hero annonce la fin de la trajectoire réellement affichée : s'il y a
+  // des chocs, c'est celle qui les porte.
+  const projected =
+    (monthlyShocked ?? monthlyBase)[
+      (monthlyShocked ?? monthlyBase).length - 1
+    ].value;
 
   const points = useMemo(
     () =>
@@ -84,8 +129,13 @@ export function ProjectionView({
 
       {mode === "deterministe" ? (
         <>
-          <ProjectionHero projected={projected} initial={initial} years={years} />
-          <ProjectionChart series={series} />
+          <ProjectionHero
+            projected={projected}
+            initial={initial}
+            years={years}
+            note={shocks.length > 0 ? " · avec chocs" : undefined}
+          />
+          <ProjectionChart series={monthlyBase} shocked={monthlyShocked} />
           <ProjectionControls
             monthlyFlow={monthlyFlow}
             onMonthlyFlow={setFlow}
@@ -94,6 +144,13 @@ export function ProjectionView({
             onRate={setRate}
             years={years}
             onYears={setYears}
+          />
+          <ScenarioPanel
+            shocks={shocks}
+            summary={summary}
+            monthlyIncome={monthlyIncome}
+            onAdd={() => setShowShockSheet(true)}
+            onRemove={(i) => setShocks((xs) => xs.filter((_, j) => j !== i))}
           />
         </>
       ) : (
@@ -128,6 +185,15 @@ export function ProjectionView({
             />
           </label>
         </>
+      )}
+
+      {showShockSheet && (
+        <ShockSheet
+          years={years}
+          monthlyIncome={monthlyIncome}
+          onAdd={(s) => setShocks((xs) => [...xs, s])}
+          onClose={() => setShowShockSheet(false)}
+        />
       )}
     </>
   );

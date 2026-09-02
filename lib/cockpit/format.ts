@@ -48,3 +48,20 @@ export const tooltipMonthLabel = (month: string) =>
     month: "short",
     year: "2-digit",
   });
+
+/**
+ * Étiquette calendaire d'un décalage en mois depuis aujourd'hui : « dans 14
+ * mois » → « nov. 2027 ». Utilisée par les scénarios de choc, qui raisonnent
+ * en numéro de mois (voir `lib/cockpit/shock.ts`) mais doivent s'afficher en
+ * date — jamais « Mois 14 ».
+ *
+ * Le jour est fixé au 1er AVANT d'ajouter les mois : sans cela, poser la date
+ * un 31 fait « rouler » `setMonth` sur le mois suivant dès que le mois visé a
+ * moins de 31 jours (ex. 31 janvier + 1 mois → 3 mars, pas février).
+ */
+export function monthOffsetLabel(offset: number, from = new Date()): string {
+  const d = new Date(from);
+  d.setDate(1);
+  d.setMonth(d.getMonth() + offset);
+  return d.toLocaleDateString("fr-FR", { month: "short", year: "numeric" });
+}

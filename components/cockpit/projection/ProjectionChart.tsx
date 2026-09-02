@@ -3,23 +3,69 @@
 import {
   AreaChart,
   Area,
+  Line,
   XAxis,
   YAxis,
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { eur } from "@/lib/cockpit/format";
+import { eur, monthOffsetLabel } from "@/lib/cockpit/format";
+import type { MonthPoint } from "@/lib/cockpit/shock";
 
+/**
+ * Trajectoire de patrimoine, au mois.
+ *
+ * L'axe est en mois et non en années : un choc de six mois est en partie
+ * résorbé à l'anniversaire suivant, donc un tracé annuel masquerait le creux
+ * que cet écran existe pour montrer. Les graduations restent annuelles pour
+ * rester lisibles.
+ *
+ * Le domaine Y utilise une fonction pour ancrer l'étage à zéro quand la
+ * trajectoire reste positive (comportement par défaut recharts), tout en
+ * admettant les valeurs négatives quand un choc érode le capital.
+ */
 export function ProjectionChart({
   series,
+  shocked,
 }: {
-  series: { year: number; value: number }[];
+  series: MonthPoint[];
+  shocked?: MonthPoint[] | null;
 }) {
+  const shockedByMonth = new Map((shocked ?? []).map((p) => [p.month, p.value]));
+  const data = series.map((p) => ({
+    month: p.month,
+    value: p.value,
+    shocked: shockedByMonth.get(p.month),
+  }));
+  const ticks = series
+    .filter((p) => p.month % 12 === 0)
+    .map((p) => p.month);
+
+  const showShocked = !!shocked && shocked.length > 0;
+
   return (
     <div className="bg-card rounded-2xl p-4 mb-4">
+      {showShocked && (
+        <div className="flex items-center gap-4 mb-2 text-[11.5px] text-ink-muted">
+          <span className="flex items-center gap-1.5">
+            <span
+              className="inline-block w-2 h-2 rounded-full"
+              style={{ backgroundColor: "#3E7D5A" }}
+            />
+            référence
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span
+              className="inline-block w-2 h-2 rounded-full"
+              style={{ backgroundColor: "#C75B39" }}
+            />
+            avec chocs
+          </span>
+        </div>
+      )}
       <div className="h-52">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={series} margin={{ top: 8, right: 4, bottom: 0, left: 4 }}>
+          <AreaChart data={data} margin={{ top: 8, right: 4, bottom: 0, left: 4 }}>
             <defs>
               <linearGradient id="projGrad" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="#3E7D5A" stopOpacity={0.28} />
@@ -27,16 +73,21 @@ export function ProjectionChart({
               </linearGradient>
             </defs>
             <XAxis
-              dataKey="year"
+              dataKey="month"
+              type="number"
+              domain={[0, series[series.length - 1]?.month ?? 0]}
+              ticks={ticks}
               tick={{ fontSize: 10, fill: "#9A8E7C" }}
               tickLine={false}
               axisLine={false}
-              tickFormatter={(y: number) => `${y}a`}
+              tickFormatter={(m: number) => `${m / 12}a`}
             />
-            <YAxis hide />
+            <YAxis hide domain={[(min: number) => Math.min(0, min), "auto"]} />
             <Tooltip
-              formatter={(v: number) => eur(v)}
-              labelFormatter={(y) => `Année ${y}`}
+              formatter={(v: number, name: string) =>
+                [eur(v), name === "shocked" ? "avec chocs" : "référence"]
+              }
+              labelFormatter={(m: number) => monthOffsetLabel(m)}
             />
             <Area
               type="monotone"
@@ -45,6 +96,15 @@ export function ProjectionChart({
               strokeWidth={2.5}
               fill="url(#projGrad)"
             />
+            {showShocked && (
+              <Line
+                type="monotone"
+                dataKey="shocked"
+                stroke="#C75B39"
+                strokeWidth={2}
+                dot={false}
+              />
+            )}
           </AreaChart>
         </ResponsiveContainer>
       </div>
