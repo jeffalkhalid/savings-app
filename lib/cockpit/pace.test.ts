@@ -83,6 +83,12 @@ describe("rythmeVariable", () => {
     const p = monthPace({ ...base, variable: 0, today: "2026-08-10" });
     expect(p.rythmeVariable).toBe(0);
   });
+
+  it("sur un seul jour écoulé, vaut le variable du jour lui-même", () => {
+    const p = monthPace({ ...base, variable: 45, today: "2026-08-01" });
+    expect(p.joursEcoules).toBe(1);
+    expect(p.rythmeVariable).toBe(45);
+  });
 });
 
 describe("finDeMois", () => {
@@ -99,9 +105,10 @@ describe("finDeMois", () => {
     expect(p.finDeMois).not.toBeNull();
   });
 
-  it("retranche le variable extrapolé sur les jours restants", () => {
-    // Le 21 août : 21 jours écoulés, et 11 restants (21 au 31 inclus).
-    // Variable 210 € → 10 €/jour. Disponible 1000 € → 1000 − 10 × 11 = 890 €.
+  it("retranche le variable extrapolé sur les jours après aujourd'hui", () => {
+    // Le 21 août : 21 jours écoulés, et 11 restants (21 au 31 inclus), dont
+    // 10 jours après aujourd'hui (22 au 31).
+    // Variable 210 € → 10 €/jour. Disponible 1000 € → 1000 − 10 × 10 = 900 €.
     const p = monthPace({
       ...base,
       resteAVivre: 1000,
@@ -110,7 +117,22 @@ describe("finDeMois", () => {
       today: "2026-08-21",
     });
     expect(p.joursRestants).toBe(11);
-    expect(p.finDeMois).toBeCloseTo(890);
+    expect(p.finDeMois).toBeCloseTo(900);
+  });
+
+  it("égale le disponible le dernier jour du mois — rien à extrapoler", () => {
+    // Le 31 août : joursRestants vaut 1, donc (joursRestants − 1) = 0 : la
+    // dépense variable du jour même ne doit plus être extrapolée en plus.
+    const p = monthPace({
+      ...base,
+      resteAVivre: 1000,
+      pendingEngagements: 200,
+      variable: 310,
+      today: "2026-08-31",
+    });
+    expect(p.joursRestants).toBe(1);
+    expect(p.finDeMois).toBeCloseTo(p.disponible);
+    expect(p.finDeMois).toBeCloseTo(800);
   });
 
   it("n'extrapole pas les engagements, déjà déduits une fois", () => {

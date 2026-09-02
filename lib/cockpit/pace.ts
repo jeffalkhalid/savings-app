@@ -1,3 +1,5 @@
+import { daysInMonth } from "./budget-month";
+
 /**
  * Tenue du mois en cours : ce qu'il reste réellement, par jour, et où l'on
  * finira au rythme actuel.
@@ -16,7 +18,14 @@ export type MonthPace = {
   parJour: number;
   /** Dépenses variables du mois ÷ jours écoulés. */
   rythmeVariable: number;
-  /** disponible − rythmeVariable × joursRestants ; null avant le seuil. */
+  /**
+   * disponible − rythmeVariable × (joursRestants − 1) ; null avant le seuil.
+   * L'extrapolation ne porte que sur les jours APRÈS aujourd'hui : la dépense
+   * d'aujourd'hui est déjà comptée une fois dans `variable`, donc dans
+   * `disponible`. Le dernier jour du mois, joursRestants vaut 1 et finDeMois
+   * égale exactement disponible — le mois est fini, il n'y a plus rien à
+   * extrapoler.
+   */
   finDeMois: number | null;
 };
 
@@ -30,30 +39,30 @@ export type MonthPace = {
  */
 export const PROJECTION_FROM_DAY = 8;
 
-function daysInMonth(y: number, m: number): number {
-  // Le jour 0 du mois suivant est le dernier jour du mois demandé.
-  return new Date(Date.UTC(y, m, 0)).getUTCDate();
-}
-
 export function monthPace(input: {
   resteAVivre: number;
   pendingEngagements: number;
   variable: number;
   today: string;
 }): MonthPace {
-  const [y, m, d] = input.today.split("-").map(Number);
-  const total = daysInMonth(y, m);
+  const [, , d] = input.today.split("-").map(Number);
+  const total = daysInMonth(input.today.slice(0, 7));
 
   const joursEcoules = d;
+  // Inclut aujourd'hui : on peut encore dépenser aujourd'hui, donc le budget
+  // journalier doit compter ce jour comme un jour à couvrir.
   const joursRestants = total - d + 1;
 
   const disponible = input.resteAVivre - input.pendingEngagements;
   const parJour = disponible > 0 ? disponible / joursRestants : 0;
   const rythmeVariable = joursEcoules > 0 ? input.variable / joursEcoules : 0;
 
+  // Contrairement à joursRestants, l'extrapolation exclut aujourd'hui : la
+  // dépense du jour est déjà dans `variable` (donc dans `disponible`) ; la
+  // recompter ici la compterait deux fois. D'où (joursRestants − 1).
   const finDeMois =
     d >= PROJECTION_FROM_DAY
-      ? disponible - rythmeVariable * joursRestants
+      ? disponible - rythmeVariable * (joursRestants - 1)
       : null;
 
   return {
