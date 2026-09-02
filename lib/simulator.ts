@@ -6,6 +6,7 @@ import type {
 } from "./types";
 import { STRATEGIES, STRATEGY_KEYS } from "./strategies";
 import { computeAbondement } from "./abondement";
+import { yearFactors } from "./market-shock";
 
 export function simulate(
   strategy: StrategyKey,
@@ -35,7 +36,24 @@ export function simulate(
   const meta = STRATEGIES[strategy];
   const smart = meta.smart;
   const growth5y = (1 + rate) ** 5;
-  const gainFrac5y = 1 - 1 / growth5y;
+
+  const shocks = p.shocks ?? [];
+  const factors = yearFactors({ rate, years, shocks });
+  const shocked = shocks.length > 0;
+
+  /**
+   * Croissance d'une cohorte déposée en `t - 5` et recyclée en `t`.
+   *
+   * Sans choc on rend le scalaire tel quel — surtout pas le produit de cinq
+   * facteurs identiques, qui différerait des derniers bits et ferait bouger des
+   * chiffres qu'aucun choc n'a touchés.
+   */
+  const growth5yAt = (t: number): number => {
+    if (!shocked) return growth5y;
+    let g = 1;
+    for (let k = Math.max(0, t - 5); k < t; k++) g *= factors[k];
+    return g;
+  };
 
   const D: number[] = new Array(years).fill(0);
 
@@ -82,11 +100,15 @@ export function simulate(
     const K_per_t = using ? 0 : K_PER_net;
     const vol_t = using ? 0 : V;
 
+    // Croissance et part de plus-value de la cohorte recyclée cette année.
+    const g5 = growth5yAt(t);
+    const gainFrac = 1 - 1 / g5;
+
     // Mature this year = our matured cohort (deposited 5 years ago)
     // + initial PEG cohort scheduled to unlock this year (only if using PEG)
     let matureFromOurs = 0;
     if (t >= 5) {
-      matureFromOurs = D[t - 5] * growth5y;
+      matureFromOurs = D[t - 5] * g5;
     }
     const matureFromInitial = t < 5 && using ? initialUnlock[t] : 0;
     const mature = matureFromOurs + matureFromInitial;
@@ -100,12 +122,12 @@ export function simulate(
     if (mature > 0) {
       const M_cap_gross = plafondPEG - (using ? baseAbondPEG : 0);
       if (smart) {
-        const targetW = M_cap_gross / 0.2 / (1 - gainFrac5y * csgPV);
+        const targetW = M_cap_gross / 0.2 / (1 - gainFrac * csgPV);
         W = Math.min(targetW, mature);
       } else {
         W = mature;
       }
-      N = W * gainFrac5y * csgPV;
+      N = W * gainFrac * csgPV;
       netRedeposit = W - N;
       M_gross = Math.min(M_cap_gross, netRedeposit * 0.2);
       M_net = M_gross * (1 - csgAb);
@@ -121,19 +143,19 @@ export function simulate(
     }
 
     D[t] = K_peg_t + M_net + netRedeposit;
-    P_peg = P_peg * (1 + rate) + K_peg_t + M_net - N;
-    P_per = P_per * (1 + rate) + K_per_t;
+    P_peg = P_peg * factors[t] + K_peg_t + M_net - N;
+    P_per = P_per * factors[t] + K_per_t;
 
     // Basis tracking
     if (mature > 0) {
-      const basisWithdrawn = W / growth5y;
+      const basisWithdrawn = W / g5;
       basisPeg += K_peg_t + M_net + (netRedeposit - basisWithdrawn);
     } else {
       basisPeg += K_peg_t;
     }
     basisPer += K_per_t;
     volCumul += vol_t;
-    peaBonus = peaBonus * (1 + rate) + tmi * vol_t;
+    peaBonus = peaBonus * factors[t] + tmi * vol_t;
 
     annual.push({
       year: t,

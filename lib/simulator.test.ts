@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { simulateAll } from "./simulator";
+import { simulate, simulateAll } from "./simulator";
 import { DEFAULT_PARAMS } from "./strategies";
 import type { SimulationParams } from "./types";
 
@@ -174,5 +174,69 @@ describe("simulateAll (caractérisation du barème Carrefour)", () => {
         },
       ]
     `);
+  });
+});
+
+describe("simulateAll sous choc", () => {
+  const withShocks = (shocks: SimulationParams["shocks"]) => ({
+    ...DEFAULT_PARAMS,
+    shocks,
+  });
+
+  it("une liste de chocs vide ne change rien", () => {
+    // La garantie du chantier : sans choc, le résultat est celui d'avant.
+    expect(summaries(withShocks([]))).toEqual(summaries(DEFAULT_PARAMS));
+  });
+
+  it("un krach réduit le net de chaque stratégie", () => {
+    const base = summaries(DEFAULT_PARAMS);
+    const shocked = summaries(
+      withShocks([{ kind: "krach", atYear: 3, dropPct: 0.3 }])
+    );
+    for (let i = 0; i < base.length; i++) {
+      expect(shocked[i].strategy).toBe(base[i].strategy);
+      expect(shocked[i].net_total).toBeLessThan(base[i].net_total);
+    }
+  });
+
+  it("la date du krach change son coût", () => {
+    // Un krach tardif frappe un encours plus gros, mais laisse moins d'années
+    // pour se refaire : les deux écarts n'ont aucune raison d'être égaux.
+    const early = summaries(
+      withShocks([{ kind: "krach", atYear: 0, dropPct: 0.3 }])
+    );
+    const late = summaries(
+      withShocks([{ kind: "krach", atYear: 9, dropPct: 0.3 }])
+    );
+    expect(early[0].net_total).not.toBeCloseTo(late[0].net_total, 2);
+  });
+
+  it("une période de rendement nul réduit le net", () => {
+    const base = summaries(DEFAULT_PARAMS);
+    const flat = summaries(
+      withShocks([{ kind: "rendement", startYear: 2, years: 4, rate: 0 }])
+    );
+    for (let i = 0; i < base.length; i++) {
+      expect(flat[i].net_total).toBeLessThan(base[i].net_total);
+    }
+  });
+
+  it("un krach entre le dépôt d'une cohorte et son recyclage réduit ce qui est recyclé", () => {
+    // LE test du chantier. La cohorte déposée en année 0 est recyclée en année
+    // 5 : elle a traversé le krach de l'année 3. Si `growth5y` était resté un
+    // scalaire, le montant mûr serait inchangé et ce test échouerait.
+    // La cohorte elle-même (année 0) est antérieure au krach, donc identique :
+    // le rapport attendu est exactement 1 − 0,3.
+    const base = simulate("A", DEFAULT_PARAMS);
+    const shocked = simulate(
+      "A",
+      withShocks([{ kind: "krach", atYear: 3, dropPct: 0.3 }])
+    );
+    expect(shocked.annual[0].D_total).toBeCloseTo(base.annual[0].D_total, 6);
+    expect(base.annual[5].mature).toBeGreaterThan(0);
+    expect(shocked.annual[5].mature).toBeCloseTo(
+      base.annual[5].mature * 0.7,
+      6
+    );
   });
 });
