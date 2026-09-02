@@ -25,9 +25,16 @@ export default function Page() {
     () => simulateAll({ ...params, shocks: [] }),
     [params]
   );
+  // Un scénario dont AUCUN choc n'entre dans l'horizon ne doit rien afficher :
+  // ni colonne « Avec chocs », ni marqueur — sinon on annonce un écart de 0 €
+  // là où rien n'a réellement été simulé sous choc.
+  const effective = shocks.some((s) => {
+    const y = s.kind === "krach" ? s.atYear : s.startYear;
+    return y >= 0 && y < params.years;
+  });
   const shockedResults = useMemo(
-    () => (shocks.length ? simulateAll({ ...params, shocks }) : null),
-    [params, shocks]
+    () => (effective ? simulateAll({ ...params, shocks }) : null),
+    [params, shocks, effective]
   );
 
   return (

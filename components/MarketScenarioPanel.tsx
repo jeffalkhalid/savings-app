@@ -7,7 +7,7 @@ import type { MarketShock } from "@/lib/market-shock";
 function describe(s: MarketShock): string {
   if (s.kind === "krach")
     return `Krach de ${Math.round(s.dropPct * 100)} % en année ${s.atYear}`;
-  return `Rendement ${Math.round(s.rate * 1000) / 10} % pendant ${
+  return `Rendement de ${Math.round(s.rate * 1000) / 10} % pendant ${
     s.years
   } an${s.years > 1 ? "s" : ""} dès l'année ${s.startYear}`;
 }
@@ -36,17 +36,17 @@ export function MarketScenarioPanel({
 
   const maxYear = Math.max(0, years - 1);
   const add = () => {
+    // Volontairement NON borné à l'horizon : un choc daté au-delà est conservé
+    // tel que saisi et signalé « hors horizon » dans la liste. Le borner
+    // silencieusement changerait le scénario demandé.
+    const year = Math.max(0, at);
     const s: MarketShock =
       kind === "krach"
-        ? {
-            kind,
-            atYear: Math.min(Math.max(0, at), maxYear),
-            dropPct: drop / 100,
-          }
+        ? { kind, atYear: year, dropPct: Math.min(90, Math.max(1, drop)) / 100 }
         : {
             kind: "rendement",
-            startYear: Math.min(Math.max(0, at), maxYear),
-            years: span,
+            startYear: year,
+            years: Math.max(1, span),
             rate: degraded / 100,
           };
     onChange([...shocks, s]);
@@ -177,11 +177,13 @@ export function MarketScenarioPanel({
                 />
               </div>
               <div>
-                <span className={label}>Rendement sur la période (%)</span>
+                <span className={label}>
+                  Rendement sur la période (%) — 0 ou négatif
+                </span>
                 <input
                   type="number"
                   min={-20}
-                  max={12}
+                  max={0}
                   step={0.5}
                   value={degraded}
                   onChange={(e) => setDegraded(Number(e.target.value))}
