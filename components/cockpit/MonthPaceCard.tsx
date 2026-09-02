@@ -1,5 +1,3 @@
-"use client";
-
 import { CalendarClock } from "lucide-react";
 import { eur } from "@/lib/cockpit/format";
 import { PROJECTION_FROM_DAY, type MonthPace } from "@/lib/cockpit/pace";
@@ -44,7 +42,13 @@ export function MonthPaceCard({ pace }: { pace: MonthPace }) {
         ) : (
           <>
             Fin de mois estimée :{" "}
-            <span className="font-mono-num">{eur(pace.finDeMois)}</span>
+            <span
+              className={`font-mono-num ${
+                pace.finDeMois < 0 ? "text-accent" : ""
+              }`}
+            >
+              {eur(pace.finDeMois)}
+            </span>
           </>
         )}
       </div>
