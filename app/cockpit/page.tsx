@@ -136,15 +136,16 @@ export default function DashboardPage() {
   // « Est-ce que je tiens » n'a de sens que sur le mois en cours : un budget
   // journalier sur un mois clos serait absurde.
   const isCurrentMonth = month === currentMonth();
+  const today = todayISO();
   const pace = useMemo(
     () =>
       monthPace({
         resteAVivre: metrics.resteAVivre,
         pendingEngagements: totals.pending,
         variable: totals.variable,
-        today: todayISO(),
+        today,
       }),
-    [metrics.resteAVivre, totals.pending, totals.variable]
+    [metrics.resteAVivre, totals.pending, totals.variable, today]
   );
   const candidates = useMemo(() => {
     const confirmed = new Set(charges.map((c) => c.payee_key));
@@ -168,7 +169,6 @@ export default function DashboardPage() {
         : undefined,
     [settings.salary_shift, month]
   );
-  const today = todayISO();
   const reminderDue = dueCount(reminders, today);
 
   const drillCat =
