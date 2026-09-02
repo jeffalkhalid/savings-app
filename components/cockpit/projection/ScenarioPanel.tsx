@@ -2,44 +2,37 @@
 
 import type { ReactNode } from "react";
 import { Plus, X } from "lucide-react";
-import { eur } from "@/lib/cockpit/format";
+import { eur, monthOffsetLabel } from "@/lib/cockpit/format";
 import type { Shock, ShockSummary } from "@/lib/cockpit/shock";
 
-/** « dans 14 mois » → « nov. 2027 », à partir d'aujourd'hui. */
-function monthLabel(offset: number): string {
-  const d = new Date();
-  d.setDate(1);
-  d.setMonth(d.getMonth() + offset);
-  return d.toLocaleDateString("fr-FR", { month: "short", year: "numeric" });
-}
-
-function describe(s: Shock): ReactNode {
+function describe(s: Shock, monthlyIncome: number): ReactNode {
   if (s.kind === "revenu")
     return (
       <>
-        Perte de revenu · <span className="font-mono-num">{s.months}</span> mois dès {monthLabel(s.startMonth)}
+        Perte de revenu · <span className="font-mono-num">{s.months}</span> mois dès {monthOffsetLabel(s.startMonth)}
         {s.keepPct > 0 && (
           <>
             {" "}· <span className="font-mono-num">{Math.round(s.keepPct * 100)}</span> % maintenus
           </>
         )}
+        {" "}· <span className="font-mono-num">−{eur(monthlyIncome * (1 - s.keepPct))}</span>/mois
       </>
     );
   if (s.kind === "depense")
     return (
       <>
-        Dépense de <span className="font-mono-num">{eur(s.amount)}</span> · {monthLabel(s.atMonth)}
+        Dépense de <span className="font-mono-num">{eur(s.amount)}</span> · {monthOffsetLabel(s.atMonth)}
       </>
     );
   if (s.kind === "charges")
     return (
       <>
-        Charges +<span className="font-mono-num">{eur(s.monthly)}</span>/mois dès {monthLabel(s.startMonth)}
+        Charges +<span className="font-mono-num">{eur(s.monthly)}</span>/mois dès {monthOffsetLabel(s.startMonth)}
       </>
     );
   return (
     <>
-      Krach de <span className="font-mono-num">{Math.round(s.dropPct * 100)}</span> % · {monthLabel(s.atMonth)}
+      Krach de <span className="font-mono-num">{Math.round(s.dropPct * 100)}</span> % · {monthOffsetLabel(s.atMonth)}
     </>
   );
 }
@@ -47,11 +40,13 @@ function describe(s: Shock): ReactNode {
 export function ScenarioPanel({
   shocks,
   summary,
+  monthlyIncome,
   onAdd,
   onRemove,
 }: {
   shocks: Shock[];
   summary: ShockSummary | null;
+  monthlyIncome: number;
   onAdd: () => void;
   onRemove: (index: number) => void;
 }) {
@@ -82,7 +77,7 @@ export function ScenarioPanel({
               key={i}
               className="flex items-center gap-2 py-2.5 border-b border-rule"
             >
-              <span className="text-[13px] flex-1">{describe(s)}</span>
+              <span className="text-[13px] flex-1">{describe(s, monthlyIncome)}</span>
               <button
                 type="button"
                 aria-label="Retirer ce choc"
@@ -99,7 +94,7 @@ export function ScenarioPanel({
               <div className="flex justify-between text-[13px]">
                 <span className="text-ink-muted">Creux</span>
                 <span className="font-mono-num">
-                  {eur(summary.trough.value)} · {monthLabel(summary.trough.month)}
+                  {eur(summary.trough.value)} · {monthOffsetLabel(summary.trough.month)}
                 </span>
               </div>
               <div className="flex justify-between text-[13px]">

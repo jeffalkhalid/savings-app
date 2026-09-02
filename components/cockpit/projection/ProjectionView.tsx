@@ -129,7 +129,12 @@ export function ProjectionView({
 
       {mode === "deterministe" ? (
         <>
-          <ProjectionHero projected={projected} initial={initial} years={years} />
+          <ProjectionHero
+            projected={projected}
+            initial={initial}
+            years={years}
+            note={shocks.length > 0 ? " · avec chocs" : undefined}
+          />
           <ProjectionChart series={monthlyBase} shocked={monthlyShocked} />
           <ProjectionControls
             monthlyFlow={monthlyFlow}
@@ -143,6 +148,7 @@ export function ProjectionView({
           <ScenarioPanel
             shocks={shocks}
             summary={summary}
+            monthlyIncome={monthlyIncome}
             onAdd={() => setShowShockSheet(true)}
             onRemove={(i) => setShocks((xs) => xs.filter((_, j) => j !== i))}
           />
@@ -183,6 +189,8 @@ export function ProjectionView({
 
       {showShockSheet && (
         <ShockSheet
+          years={years}
+          monthlyIncome={monthlyIncome}
           onAdd={(s) => setShocks((xs) => [...xs, s])}
           onClose={() => setShowShockSheet(false)}
         />

@@ -9,7 +9,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { eur } from "@/lib/cockpit/format";
+import { eur, monthOffsetLabel } from "@/lib/cockpit/format";
 import type { MonthPoint } from "@/lib/cockpit/shock";
 
 /**
@@ -41,8 +41,28 @@ export function ProjectionChart({
     .filter((p) => p.month % 12 === 0)
     .map((p) => p.month);
 
+  const showShocked = !!shocked && shocked.length > 0;
+
   return (
     <div className="bg-card rounded-2xl p-4 mb-4">
+      {showShocked && (
+        <div className="flex items-center gap-4 mb-2 text-[11.5px] text-ink-muted">
+          <span className="flex items-center gap-1.5">
+            <span
+              className="inline-block w-2 h-2 rounded-full"
+              style={{ backgroundColor: "#3E7D5A" }}
+            />
+            référence
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span
+              className="inline-block w-2 h-2 rounded-full"
+              style={{ backgroundColor: "#C75B39" }}
+            />
+            avec chocs
+          </span>
+        </div>
+      )}
       <div className="h-52">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data} margin={{ top: 8, right: 4, bottom: 0, left: 4 }}>
@@ -67,7 +87,7 @@ export function ProjectionChart({
               formatter={(v: number, name: string) =>
                 [eur(v), name === "shocked" ? "avec chocs" : "référence"]
               }
-              labelFormatter={(m: number) => `Mois ${m}`}
+              labelFormatter={(m: number) => monthOffsetLabel(m)}
             />
             <Area
               type="monotone"
@@ -76,11 +96,11 @@ export function ProjectionChart({
               strokeWidth={2.5}
               fill="url(#projGrad)"
             />
-            {shocked && shocked.length > 0 && (
+            {showShocked && (
               <Line
                 type="monotone"
                 dataKey="shocked"
-                stroke="#B45342"
+                stroke="#C75B39"
                 strokeWidth={2}
                 dot={false}
               />

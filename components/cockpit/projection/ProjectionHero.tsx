@@ -4,16 +4,18 @@ export function ProjectionHero({
   projected,
   initial,
   years,
+  note,
 }: {
   projected: number;
   initial: number;
   years: number;
+  note?: string;
 }) {
   const mult = initial > 0 ? projected / initial : null;
   return (
     <div className="bg-card rounded-[26px] p-6 mb-4">
       <div className="text-[11px] uppercase tracking-[0.12em] text-ink-muted mb-2">
-        Patrimoine projeté · {years} ans
+        Patrimoine projeté · {years} ans{note}
       </div>
       <div className="font-display text-emerald text-4xl leading-none">
         {eur(projected)}

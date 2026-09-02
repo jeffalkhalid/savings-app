@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { eur } from "@/lib/cockpit/format";
 import type { Shock } from "@/lib/cockpit/shock";
 
 const KINDS: { v: Shock["kind"]; label: string }[] = [
@@ -11,19 +12,36 @@ const KINDS: { v: Shock["kind"]; label: string }[] = [
 ];
 
 export function ShockSheet({
+  years,
+  monthlyIncome,
   onAdd,
   onClose,
 }: {
+  years: number;
+  monthlyIncome: number;
   onAdd: (s: Shock) => void;
   onClose: () => void;
 }) {
-  const [kind, setKind] = useState<Shock["kind"]>("revenu");
-  const [start, setStart] = useState(12);
+  const maxMonth = years * 12;
+  const noIncome = monthlyIncome === 0;
+  // Sans revenu mesuré, « Perte de revenu » serait un no-op silencieux : on
+  // n'ouvre jamais la feuille sur ce choix-là dans ce cas.
+  const [kind, setKind] = useState<Shock["kind"]>(noIncome ? "depense" : "revenu");
+  // Clampé à la fenêtre affichable : un choc daté au-delà de l'horizon serait
+  // accepté mais ne jouerait jamais.
+  const [start, setStart] = useState(Math.min(12, maxMonth));
   const [months, setMonths] = useState(6);
   const [keep, setKeep] = useState(0);
   const [amount, setAmount] = useState(15000);
   const [monthly, setMonthly] = useState(250);
   const [drop, setDrop] = useState(30);
+
+  // Si l'horizon rétrécit pendant que la feuille est ouverte, la date posée
+  // peut se retrouver au-delà du nouveau maximum : on la ramène dans la
+  // fenêtre plutôt que de laisser un choc qui ne jouera jamais.
+  useEffect(() => {
+    setStart((s) => Math.min(s, maxMonth));
+  }, [maxMonth]);
 
   const build = (): Shock => {
     if (kind === "revenu")
@@ -54,18 +72,32 @@ export function ShockSheet({
         </header>
 
         <div className="grid gap-1.5 mb-5">
-          {KINDS.map((k) => (
-            <button
-              key={k.v}
-              type="button"
-              onClick={() => setKind(k.v)}
-              className={`text-left py-3 px-3 rounded-lg text-[14px] ${
-                kind === k.v ? "bg-emerald text-paper font-semibold" : "bg-seg text-ink"
-              }`}
-            >
-              {k.label}
-            </button>
-          ))}
+          {KINDS.map((k) => {
+            const disabled = k.v === "revenu" && noIncome;
+            return (
+              <div key={k.v}>
+                <button
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => setKind(k.v)}
+                  className={`w-full text-left py-3 px-3 rounded-lg text-[14px] ${
+                    disabled
+                      ? "bg-seg text-ink-muted opacity-50"
+                      : kind === k.v
+                        ? "bg-emerald text-paper font-semibold"
+                        : "bg-seg text-ink"
+                  }`}
+                >
+                  {k.label}
+                </button>
+                {disabled && (
+                  <p className="text-[11.5px] text-ink-muted mt-1 px-1">
+                    Aucun revenu mesuré dans l&apos;historique.
+                  </p>
+                )}
+              </div>
+            );
+          })}
         </div>
 
         <div className="grid gap-4">
@@ -74,8 +106,11 @@ export function ShockSheet({
             dans <span className="font-mono-num">{start}</span> mois
             <input
               type="range"
+              // min=1 et non 0 : le moteur seed le mois 0 avant sa boucle
+              // (`out = [{ month: 0, value: initial }]`), donc un choc ponctuel
+              // daté du mois 0 ne serait jamais appliqué.
               min={1}
-              max={120}
+              max={maxMonth}
               step={1}
               value={start}
               onChange={(e) => setStart(Number(e.target.value))}
@@ -106,30 +141,44 @@ export function ShockSheet({
                   onChange={(e) => setKeep(Number(e.target.value))}
                 />
               </label>
+              <p className="text-[13px] text-ink-muted -mt-2">
+                <span className="font-mono-num">
+                  −{eur(monthlyIncome * (1 - keep / 100))}
+                </span>{" "}
+                par mois
+              </p>
             </>
           )}
 
           {kind === "depense" && (
             <label className={field}>
               Montant
-              <input
-                type="number"
-                className={input}
-                value={amount}
-                onChange={(e) => setAmount(Number(e.target.value))}
-              />
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min={0}
+                  className={input}
+                  value={amount}
+                  onChange={(e) => setAmount(Number(e.target.value))}
+                />
+                <span className="text-ink-muted text-[13px]">€</span>
+              </div>
             </label>
           )}
 
           {kind === "charges" && (
             <label className={field}>
               Charge mensuelle supplémentaire
-              <input
-                type="number"
-                className={input}
-                value={monthly}
-                onChange={(e) => setMonthly(Number(e.target.value))}
-              />
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min={0}
+                  className={input}
+                  value={monthly}
+                  onChange={(e) => setMonthly(Number(e.target.value))}
+                />
+                <span className="text-ink-muted text-[13px]">€</span>
+              </div>
             </label>
           )}
 
