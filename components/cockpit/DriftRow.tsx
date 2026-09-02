@@ -13,13 +13,15 @@ import type { Drift } from "@/lib/cockpit/drift";
  */
 export function DriftRow({
   drift,
-  actionLabel,
+  actionVerb,
+  actionAmount,
   onAction,
   onOpen,
   busy,
 }: {
   drift: Drift;
-  actionLabel: string;
+  actionVerb: string;
+  actionAmount: number;
   onAction: () => void;
   onOpen: () => void;
   busy: boolean;
@@ -61,7 +63,8 @@ export function DriftRow({
           disabled={busy}
           className="flex-1 bg-emerald text-paper rounded-lg py-2.5 text-[13px] font-semibold disabled:opacity-50"
         >
-          {actionLabel}
+          {actionVerb} à{" "}
+          <span className="font-mono-num">{eur(actionAmount)}</span>
         </button>
       </div>
     </div>

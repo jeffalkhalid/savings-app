@@ -182,7 +182,8 @@ export default function DerivePage() {
                   <DriftRow
                     key={d.key}
                     drift={d}
-                    actionLabel={`Recaler à ${eur(Math.round(d.recent))}`}
+                    actionVerb="Recaler"
+                    actionAmount={Math.round(d.recent)}
                     onAction={() => recale(d)}
                     onOpen={() => openSheet(d.key)}
                     busy={busy}
@@ -203,7 +204,8 @@ export default function DerivePage() {
                   <DriftRow
                     key={d.key}
                     drift={d}
-                    actionLabel={`Suivre à ${eur(Math.round(d.recent))}`}
+                    actionVerb="Suivre"
+                    actionAmount={Math.round(d.recent)}
                     onAction={() => suivre(d)}
                     onOpen={() => openSheet(d.key)}
                     busy={busy}
