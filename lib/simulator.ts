@@ -39,7 +39,10 @@ export function simulate(
 
   const shocks = p.shocks ?? [];
   const factors = yearFactors({ rate, years, shocks });
-  const shocked = shocks.length > 0;
+  // « Choqué » veut dire qu'un facteur diffère réellement, pas qu'une liste
+  // est non vide : un choc daté hors de l'horizon ne doit rien changer, pas
+  // même les derniers bits.
+  const shocked = factors.some((f) => f !== 1 + rate);
 
   /**
    * Croissance d'une cohorte déposée en `t - 5` et recyclée en `t`.
@@ -50,7 +53,11 @@ export function simulate(
    */
   const growth5yAt = (t: number): number => {
     if (!shocked) return growth5y;
-    let g = 1;
+    // Les années antérieures à la fenêtre simulée sont comptées au taux de
+    // base : une cohorte déjà en place avant l'année 0 a accumulé sa
+    // plus-value hors de la simulation, et aucun choc daté ne s'y applique.
+    // Cela rend aussi growth5yAt(0) exactement égal au scalaire d'origine.
+    let g = (1 + rate) ** Math.max(0, 5 - t);
     for (let k = Math.max(0, t - 5); k < t; k++) g *= factors[k];
     return g;
   };

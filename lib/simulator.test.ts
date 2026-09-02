@@ -239,4 +239,18 @@ describe("simulateAll sous choc", () => {
       6
     );
   });
+
+  it("prélève toujours la CSG de recyclage sur une cohorte préexistante", () => {
+    // Les cohortes déjà en place se débloquent avant l'année 5. Avec la
+    // fenêtre naïve, g5 valait 1 à l'année 0, la part de plus-value tombait à
+    // zéro et la CSG de recyclage disparaissait purement et simplement.
+    const p = { ...DEFAULT_PARAMS, initialPEG: 20000, initialPegUnlock0: 10000 };
+    const base = simulate("A", p);
+    const shocked = simulate("A", {
+      ...p,
+      shocks: [{ kind: "krach" as const, atYear: 3, dropPct: 0.3 }],
+    });
+    expect(base.annual[0].N).toBeGreaterThan(0);
+    expect(shocked.annual[0].N).toBeCloseTo(base.annual[0].N, 6);
+  });
 });
