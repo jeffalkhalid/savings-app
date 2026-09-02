@@ -128,7 +128,12 @@ export default function CommercantsPage() {
             <Link href="/cockpit" className="text-ink-muted text-sm">
               ‹ Cockpit
             </Link>
-            <h1 className="font-display text-2xl mt-2">Commerçants</h1>
+            <div className="flex items-baseline justify-between gap-3 mt-2">
+              <h1 className="font-display text-2xl">Commerçants</h1>
+              <Link href="/cockpit/tri" className="text-[12px] text-ink-muted">
+                Trier
+              </Link>
+            </div>
             <p className="text-[13px] text-ink-muted mt-1">
               {loading
                 ? "Chargement…"
