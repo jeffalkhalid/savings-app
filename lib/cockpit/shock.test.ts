@@ -232,4 +232,61 @@ describe("summarise", () => {
     expect(s.recoveryMonths).toBe(0);
     expect(s.deltaAtHorizon).toBeCloseTo(0);
   });
+
+  it("ne prend pas le patrimoine d'aujourd'hui pour un creux quand le choc ne descend pas sous le capital initial", () => {
+    // Le cas qui était cassé : le choc creuse la courbe SANS jamais la faire
+    // repasser sous sa valeur de départ (mois 0), donc le minimum global de
+    // la série reste le mois 0 — ce n'est pas le creux qu'on veut.
+    //
+    // Calcul à la main (rate 0, donc pas de capitalisation, +500 €/mois) :
+    //   mois 0  : 20 000
+    //   mois 23 : 20 000 + 23×500 = 31 500  (avant le choc)
+    //   mois 24 : 31 500 + 500 − 3 000 = 29 000  (creux : sous le mois 23,
+    //             mais toujours au-dessus du mois 0 → le minimum global
+    //             serait le mois 0 si la fenêtre n'était pas restreinte)
+    //   retour  : 29 000 croît de 500/mois ; il faut +2 500 pour retrouver
+    //             31 500, soit 5 mois → mois 29, delay = 29 − 24 = 5
+    const s = summarise(
+      baseSeries,
+      projectMonthly({
+        ...flat,
+        shocks: [{ kind: "depense", atMonth: 24, amount: 3000 }],
+      }),
+      24
+    );
+    expect(s.trough.month).toBe(24);
+    expect(s.trough.value).toBeCloseTo(29000);
+    expect(s.recoveryMonths).toBe(5);
+  });
+
+  it("cherche le retour après le creux, pas après le premier choc, sur un scénario à deux chocs", () => {
+    // Deux dépenses, mois 12 puis mois 60. Le premier choc dessine un creux
+    // modeste dont la courbe se relève complètement avant le second, plus
+    // sévère, qui redescend sous le niveau d'avant-premier-choc. Le délai
+    // affiché doit être mesuré depuis LE CREUX (mois 60), pas depuis le
+    // premier choc (mois 12) — sans quoi la recherche s'arrêterait sur la
+    // remontée passagère qui suit le premier choc, pas sur le retour durable.
+    //
+    // Calcul à la main (rate 0, +500 €/mois) :
+    //   avant (mois 11)      : 20 000 + 11×500 = 25 500
+    //   mois 12 (−3 000)     : 25 500 + 500 − 3 000 = 23 000
+    //   remonte à 25 500 dès (25 500−23 000)/500 = 5 mois → mois 17
+    //     (une recherche naïve depuis le mois 12 s'arrêterait ici : délai 5)
+    //   mois 59 (avant le 2e choc) : 23 000 + 47×500 = 46 500
+    //   mois 60 (−40 000)    : 46 500 + 500 − 40 000 = 7 000   ← creux global
+    //   remonte à 25 500 dès (25 500−7 000)/500 = 37 mois → mois 97
+    //     délai réel : 97 − 12 (premier choc) = 85
+    const twoShocks: Shock[] = [
+      { kind: "depense", atMonth: 12, amount: 3000 },
+      { kind: "depense", atMonth: 60, amount: 40000 },
+    ];
+    const s = summarise(
+      baseSeries,
+      projectMonthly({ ...flat, years: 10, shocks: twoShocks }),
+      firstShockMonth(twoShocks)
+    );
+    expect(s.trough.month).toBe(60);
+    expect(s.trough.value).toBeCloseTo(7000);
+    expect(s.recoveryMonths).toBe(85);
+  });
 });

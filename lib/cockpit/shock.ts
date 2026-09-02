@@ -94,8 +94,25 @@ export function summarise(
   shocked: MonthPoint[],
   firstShock: number | null
 ): ShockSummary {
-  let trough = shocked[0] ?? { month: 0, value: 0 };
-  for (const p of shocked) if (p.value < trough.value) trough = p;
+  // Sans choc, le creux de la série entière est la lecture naturelle : il n'y
+  // a pas de « avant » à distinguer. Avec un choc, la recherche du creux doit
+  // se limiter à la fenêtre POST-choc (mois >= firstShock) : sinon, dès que
+  // le choc ne fait pas passer le capital sous son niveau de départ — le cas
+  // le plus courant, puisque la trajectoire a déjà grossi avant que le choc
+  // ne frappe — le minimum global reste le mois 0, et l'écran affiche le
+  // patrimoine d'aujourd'hui comme « creux », avec un délai de retour
+  // négatif (avant même le choc).
+  let trough: MonthPoint;
+  if (firstShock === null) {
+    trough = shocked[0] ?? { month: 0, value: 0 };
+    for (const p of shocked) if (p.value < trough.value) trough = p;
+  } else {
+    const postShock = shocked.filter((p) => p.month >= firstShock);
+    // Fenêtre vide : le choc est daté au-delà de l'horizon affiché, il ne
+    // joue donc jamais. On retombe sur le dernier point de la série.
+    trough = postShock[0] ?? shocked[shocked.length - 1] ?? { month: 0, value: 0 };
+    for (const p of postShock) if (p.value < trough.value) trough = p;
+  }
 
   const lastBase = base[base.length - 1]?.value ?? 0;
   const lastShocked = shocked[shocked.length - 1]?.value ?? 0;
@@ -112,9 +129,13 @@ export function summarise(
 
   // Cherché APRÈS le creux et non après le premier choc : sur un scénario à
   // plusieurs chocs, la courbe peut remonter puis replonger, et le délai qui
-  // intéresse est celui du retour durable.
+  // intéresse est celui du retour durable. Math.max(trough.month, firstShock)
+  // est une sécurité : la fenêtre post-choc ci-dessus place déjà
+  // trough.month >= firstShock, sauf dans le cas de repli où la fenêtre est
+  // vide et trough retombe sur le dernier point de la série.
+  const searchFrom = Math.max(trough.month, firstShock);
   const back = shocked.find(
-    (p) => p.month >= trough.month && p.value >= before
+    (p) => p.month >= searchFrom && p.value >= before
   );
   return {
     trough,
