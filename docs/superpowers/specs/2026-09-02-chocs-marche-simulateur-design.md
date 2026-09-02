@@ -90,10 +90,19 @@ export function yearFactors(input: {
 `SimulationParams` gagne un champ optionnel `shocks?: MarketShock[]`. Dans `simulate` :
 
 - `P_peg`, `P_per` et `peaBonus` capitalisent avec `factors[t]` au lieu de `(1 + rate)` ;
-- `growth5yAt(t)` rend le scalaire actuel quand `shocks` est vide, sinon le produit des facteurs des
-  cinq années précédant `t` ; `gainFrac5yAt(t)` en découle ;
+- `growth5yAt(t)` rend le scalaire actuel quand `shocks` est vide, sinon le produit des facteurs de
+  la fenêtre `t−4 … t` ; `gainFrac5yAt(t)` en découle. La fenêtre commence à `t−4` et non `t−5` : les
+  apports sont crédités APRÈS la croissance de leur année (`P_peg = P_peg * factors[t] + K_peg_t`),
+  donc une cohorte déposée en `t−5` n'est en portefeuille qu'à partir de `t−4` — elle ne subit jamais
+  `factors[t-5]` — et elle est toujours investie l'année où elle est recyclée, donc elle subit bien
+  `factors[t]` ;
 - les trois usages de `growth5y` — valorisation de la cohorte mûre, CSG sur la plus-value, base
-  fiscale retirée — passent par ces fonctions.
+  fiscale retirée — passent par ces fonctions ;
+- une cohorte dont `g5 < 1` — un krach suffisamment sévère pendant sa fenêtre — vaut, à sa
+  maturité, **moins** qu'à son dépôt : elle n'a alors **aucune** plus-value. `gainFrac5yAt(t)` est
+  borné à 0 dans ce cas, pour qu'un krach ne prélève jamais une CSG négative (donc ne rembourse
+  jamais d'impôt) et que la base fiscale retirée reste plafonnée au montant effectivement retiré,
+  jamais au-delà.
 
 Aucune autre partie de la fiscalité ne bouge : c'est le sujet de la seconde spec.
 

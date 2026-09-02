@@ -4,19 +4,35 @@ import type { SimulationResult, StrategyKey } from "@/lib/types";
 import { STRATEGIES } from "@/lib/strategies";
 import { formatEuro, formatMultiplier } from "@/lib/format";
 
+/** Le français distingue « 1er » des autres ordinaux, qui prennent « ᵉ ». */
+const ord = (n: number) => (n === 1 ? "1er" : `${n}ᵉ`);
+
 interface Props {
   results: SimulationResult[];
+  shocked?: SimulationResult[] | null;
   selected: StrategyKey;
   onSelect: (k: StrategyKey) => void;
 }
 
-export function StrategyRanking({ results, selected, onSelect }: Props) {
+export function StrategyRanking({ results, shocked, selected, onSelect }: Props) {
   const sorted = [...results].sort(
     (a, b) => b.summary.net_total - a.summary.net_total,
   );
   const best = sorted[0];
   const worst = sorted[sorted.length - 1];
   const spread = best.summary.net_total - worst.summary.net_total;
+
+  // Le classement affiché reste celui de référence : c'est le déplacement PAR
+  // RAPPORT à lui que le lecteur cherche, pas un second classement à comparer
+  // de tête.
+  const shockedByKey = new Map(
+    (shocked ?? []).map((r) => [r.strategy, r] as const)
+  );
+  const shockedRank = new Map(
+    [...(shocked ?? [])]
+      .sort((a, b) => b.summary.net_total - a.summary.net_total)
+      .map((r, i) => [r.strategy, i] as const)
+  );
 
   return (
     <section>
@@ -79,6 +95,32 @@ export function StrategyRanking({ results, selected, onSelect }: Props) {
                   {formatMultiplier(r.summary.multiplier)}
                 </span>
               </div>
+              {shockedByKey.has(r.strategy) && (
+                <div className="mt-3 pt-3 border-t border-rule">
+                  <div className="flex items-baseline justify-between text-xs">
+                    <span className="text-ink-muted">Avec chocs</span>
+                    <span className="font-mono-num text-ink">
+                      {formatEuro(
+                        shockedByKey.get(r.strategy)!.summary.net_total
+                      )}
+                    </span>
+                  </div>
+                  <div className="flex items-baseline justify-between text-xs mt-1">
+                    <span className="text-ink-muted">Écart</span>
+                    <span className="font-mono-num text-accent">
+                      {formatEuro(
+                        shockedByKey.get(r.strategy)!.summary.net_total -
+                          r.summary.net_total
+                      )}
+                    </span>
+                  </div>
+                  {shockedRank.get(r.strategy) !== idx && (
+                    <div className="text-[11px] text-ink mt-1.5">
+                      Passe {ord(idx + 1)} → {ord((shockedRank.get(r.strategy) ?? 0) + 1)}
+                    </div>
+                  )}
+                </div>
+              )}
             </button>
           );
         })}

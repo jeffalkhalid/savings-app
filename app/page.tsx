@@ -8,15 +8,34 @@ import { StrategyRanking } from "@/components/StrategyRanking";
 import { ComparisonChart } from "@/components/ComparisonChart";
 import { StrategyDetail } from "@/components/StrategyDetail";
 import { DataTables } from "@/components/DataTables";
+import { MarketScenarioPanel } from "@/components/MarketScenarioPanel";
 import { simulateAll } from "@/lib/simulator";
 import { DEFAULT_PARAMS } from "@/lib/strategies";
 import type { SimulationParams, StrategyKey } from "@/lib/types";
+import type { MarketShock } from "@/lib/market-shock";
 
 export default function Page() {
   const [params, setParams] = useState<SimulationParams>(DEFAULT_PARAMS);
   const [selected, setSelected] = useState<StrategyKey>("F");
+  const [shocks, setShocks] = useState<MarketShock[]>([]);
 
-  const results = useMemo(() => simulateAll(params), [params]);
+  // La référence est calculée SANS chocs, explicitement : elle ne doit pas
+  // dépendre de ce que `params` pourrait porter.
+  const results = useMemo(
+    () => simulateAll({ ...params, shocks: [] }),
+    [params]
+  );
+  // Un scénario dont AUCUN choc n'entre dans l'horizon ne doit rien afficher :
+  // ni colonne « Avec chocs », ni marqueur — sinon on annonce un écart de 0 €
+  // là où rien n'a réellement été simulé sous choc.
+  const effective = shocks.some((s) => {
+    const y = s.kind === "krach" ? s.atYear : s.startYear;
+    return y >= 0 && y < params.years;
+  });
+  const shockedResults = useMemo(
+    () => (effective ? simulateAll({ ...params, shocks }) : null),
+    [params, shocks, effective]
+  );
 
   return (
     <main className="max-w-[1600px] mx-auto">
@@ -58,12 +77,18 @@ export default function Page() {
         {/* Sidebar */}
         <div className="lg:border-r border-rule lg:sticky lg:top-0 lg:h-screen lg:overflow-y-auto">
           <ParameterPanel params={params} setParams={setParams} />
+          <MarketScenarioPanel
+            shocks={shocks}
+            years={params.years}
+            onChange={setShocks}
+          />
         </div>
 
         {/* Main column */}
         <div className="p-6 lg:p-10 space-y-10">
           <StrategyRanking
             results={results}
+            shocked={shockedResults}
             selected={selected}
             onSelect={setSelected}
           />

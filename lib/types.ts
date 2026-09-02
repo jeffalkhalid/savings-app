@@ -1,4 +1,5 @@
 import type { AbondementBareme } from "./abondement";
+import type { MarketShock } from "./market-shock";
 
 export type StrategyKey = "A" | "B" | "C" | "D" | "E" | "F";
 
@@ -14,6 +15,9 @@ export interface SimulationParams {
   // Marché
   rate: number;
   years: number;
+
+  /** Chocs de marché datés. Absent ou vide = scénario central. */
+  shocks?: MarketShock[];
 
   // Fiscalité
   csgPlusValue: number; // 18.6% sur les plus-values (recyclage + sortie PEG)
