@@ -20,6 +20,8 @@ export type TriageMerchant = {
   lastDate: string;
   /** Jusqu'à 4 libellés distincts, le plus fréquent d'abord. */
   samples: string[];
+  /** Nombre de lignes NON classées par type d'opération. */
+  typeCounts: Partial<Record<Txn["type"], number>>;
   /** Nom de catégorie proposé, ou null quand l'app ne sait pas. */
   suggestion: string | null;
 };
@@ -27,18 +29,28 @@ export type TriageMerchant = {
 const FALLBACK = "Autres";
 const MAX_SAMPLES = 4;
 
-/** Une ligne est non classée si elle n'a pas de catégorie utilisable. */
+/**
+ * Résout la catégorie d'une ligne — le nom si elle est classée dans une vraie
+ * catégorie, `null` si elle ne l'est pas.
+ *
+ * `names` doit porter TOUTES les catégories, actives ou archivées : archiver
+ * une catégorie (`CategoriesModal`) est un choix d'affichage, pas une
+ * suppression — les lignes gardent leur `category_id`, et une catégorie
+ * archivée reste une vraie décision que ce tri n'a pas à écraser. Un
+ * identifiant absent de `names` (catégorie réellement supprimée) reste en
+ * revanche non classé.
+ */
 function isUnsorted(
   t: Txn,
   names: Map<string, string>,
   fallback: string
-): boolean {
-  if (!t.category_id) return true;
+): string | null {
+  if (!t.category_id) return null;
   const name = names.get(t.category_id);
   // Une catégorie supprimée laisse un identifiant orphelin : la ligne n'est
   // pas classée pour autant.
-  if (!name) return true;
-  return name === fallback;
+  if (!name) return null;
+  return name === fallback ? null : name;
 }
 
 /** Clé du plus grand compteur d'une map, `null` si elle est vide. */
@@ -61,29 +73,36 @@ function topOf(counts: Map<string, number>): string | null {
  * à l'import mais ne sont stockées nulle part, donc elles n'existent pas pour
  * les lignes déjà en base. Quand aucune source ne parle, on ne propose rien —
  * une suggestion fausse serait acceptée d'un tap au vingtième écran.
+ *
+ * `choosable` ne porte que les noms que l'utilisateur peut effectivement
+ * choisir sur cet écran (catégories actives) : proposer une catégorie
+ * archivée mènerait à un tap qui n'ouvre sur rien. Quand la source la plus
+ * forte (l'historique) pointe vers une catégorie non choisissable, on
+ * retombe sur la source suivante plutôt que de renoncer tout de suite.
  */
 function suggest(
   sortedCategoryCounts: Map<string, number>,
   samples: string[],
   signedTotal: number,
-  names: Map<string, string>
+  choosable: Set<string>
 ): string | null {
   // 1. L'historique partiel du commerçant : le signal le plus fort.
   const fromHistory = topOf(sortedCategoryCounts);
-  if (fromHistory) return fromHistory;
+  if (fromHistory && choosable.has(fromHistory)) return fromHistory;
 
-  const known = new Set(names.values());
   const first = samples[0] ?? "";
 
-  // 2. Motif de virement, comme `isTransferLabel` dans classify.ts.
-  if (/^VIR|^VIREMENT/i.test(first)) {
+  // 2. Motif de virement, comme `isTransferLabel` dans classify.ts. La
+  // frontière de mot évite qu'un libellé comme « Virginie coiffeuse » soit
+  // pris pour un virement.
+  if (/^VIR(?:EMENT)?\b/i.test(first)) {
     const name = signedTotal >= 0 ? "Virements reçus" : "Virements émis";
-    return known.has(name) ? name : null;
+    if (choosable.has(name)) return name;
   }
 
   // 3. La devinette timide existante.
   if (first.toUpperCase().includes("COMMISSION")) {
-    return known.has("Frais bancaires") ? "Frais bancaires" : null;
+    if (choosable.has("Frais bancaires")) return "Frais bancaires";
   }
 
   return null;
@@ -91,12 +110,20 @@ function suggest(
 
 export function triageQueue(input: {
   txns: Txn[];
+  /** TOUTES les catégories, actives ou archivées (voir `isUnsorted`). */
   categoryNameById: Map<string, string>;
   ruledKeys: Set<string>;
   fallbackName?: string;
+  /**
+   * Catégories que l'écran peut effectivement proposer (actives). Par défaut,
+   * les noms de `categoryNameById` — utile pour les tests, où la même map
+   * sert de connue et de choisissable.
+   */
+  choosableNames?: Set<string>;
 }): TriageMerchant[] {
   const { txns, categoryNameById: names, ruledKeys } = input;
   const fallback = input.fallbackName ?? FALLBACK;
+  const choosable = input.choosableNames ?? new Set(names.values());
 
   type Group = {
     count: number;
@@ -106,6 +133,7 @@ export function triageQueue(input: {
     lastDate: string;
     labels: Map<string, number>;
     sortedCats: Map<string, number>;
+    typeCounts: Map<Txn["type"], number>;
   };
   const groups = new Map<string, Group>();
 
@@ -124,20 +152,22 @@ export function triageQueue(input: {
         lastDate: "",
         labels: new Map<string, number>(),
         sortedCats: new Map<string, number>(),
+        typeCounts: new Map<Txn["type"], number>(),
       };
     groups.set(key, g);
 
-    if (!isUnsorted(t, names, fallback)) {
+    const sortedName = isUnsorted(t, names, fallback);
+    if (sortedName !== null) {
       // Ligne déjà classée : elle ne pèse pas dans la file, mais elle informe
       // la suggestion.
-      const name = names.get(t.category_id as string) as string;
-      g.sortedCats.set(name, (g.sortedCats.get(name) ?? 0) + 1);
+      g.sortedCats.set(sortedName, (g.sortedCats.get(sortedName) ?? 0) + 1);
       continue;
     }
 
     g.count += 1;
     g.total += Math.abs(Number(t.amount));
     g.signedTotal += Number(t.amount);
+    g.typeCounts.set(t.type, (g.typeCounts.get(t.type) ?? 0) + 1);
     if (!g.firstDate || t.date < g.firstDate) g.firstDate = t.date;
     if (t.date > g.lastDate) g.lastDate = t.date;
     g.labels.set(t.description, (g.labels.get(t.description) ?? 0) + 1);
@@ -160,7 +190,10 @@ export function triageQueue(input: {
       firstDate: g.firstDate,
       lastDate: g.lastDate,
       samples,
-      suggestion: suggest(g.sortedCats, samples, g.signedTotal, names),
+      typeCounts: Object.fromEntries(g.typeCounts) as Partial<
+        Record<Txn["type"], number>
+      >,
+      suggestion: suggest(g.sortedCats, samples, g.signedTotal, choosable),
     });
   }
 
@@ -189,4 +222,25 @@ export function frequentCategories(
     .sort((a, b) => b[1] - a[1])
     .slice(0, n)
     .map(([name]) => name);
+}
+
+/**
+ * Ids des lignes non classées d'un commerçant, sur la même règle que la file
+ * (`isUnsorted`). Exporté pour que l'écran n'ait pas à réexprimer ce filtre
+ * sur une autre forme : les deux finiraient par diverger, silencieusement —
+ * la file listerait un commerçant que l'écran refuse ensuite de déplacer.
+ */
+export function unsortedIdsFor(
+  txns: Txn[],
+  key: string,
+  categoryNameById: Map<string, string>,
+  fallbackName?: string
+): string[] {
+  const fallback = fallbackName ?? FALLBACK;
+  const ids: string[] = [];
+  for (const t of txns) {
+    if (merchantKey(t.description) !== key) continue;
+    if (isUnsorted(t, categoryNameById, fallback) === null) ids.push(t.id);
+  }
+  return ids;
 }

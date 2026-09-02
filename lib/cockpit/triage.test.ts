@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { triageQueue, frequentCategories } from "./triage";
+import { triageQueue, frequentCategories, unsortedIdsFor } from "./triage";
 import type { Txn } from "./types";
 
 let seq = 0;
@@ -75,6 +75,27 @@ describe("triageQueue — ce qui entre dans la file", () => {
   it("rend une liste vide pour une entrée vide", () => {
     expect(queue([])).toEqual([]);
   });
+
+  it("écarte une ligne rangée dans une catégorie archivée : connue mais non choisissable", () => {
+    // Archiver une catégorie (CategoriesModal) est un affichage, pas une
+    // suppression : les lignes gardent leur category_id et restent classées.
+    // `categoryNameById` doit donc porter aussi les catégories archivées.
+    const names = new Map([...NAMES, ["cat-loisirs", "Loisirs"]]);
+    const out = triageQueue({
+      txns: [t("MONOPRIX PARIS", -20, "cat-loisirs")],
+      categoryNameById: names,
+      ruledKeys: new Set(),
+      choosableNames: new Set(NAMES.values()),
+    });
+    expect(out).toEqual([]);
+  });
+
+  it("retient une ligne non classée de type revenu, pas seulement les dépenses", () => {
+    const out = queue([
+      t("SALAIRE ENTREPRISE", 2000, null, "2026-05-05", "income"),
+    ]);
+    expect(out).toHaveLength(1);
+  });
 });
 
 describe("triageQueue — ce que porte une entrée", () => {
@@ -145,6 +166,15 @@ describe("triageQueue — ce que porte une entrée", () => {
       "petit commerce",
     ]);
   });
+
+  it("compte les lignes non classées par type d'opération", () => {
+    const out = queue([
+      t("SARL DUPONT", -10, null, "2026-05-05", "expense"),
+      t("SARL DUPONT", -20, null, "2026-05-05", "expense"),
+      t("SARL DUPONT", 30, null, "2026-05-05", "income"),
+    ]);
+    expect(out[0].typeCounts).toEqual({ expense: 2, income: 1 });
+  });
 });
 
 describe("triageQueue — la suggestion", () => {
@@ -204,6 +234,57 @@ describe("triageQueue — la suggestion", () => {
       ruledKeys: new Set(),
     });
     expect(out[0].suggestion).toBeNull();
+  });
+
+  it("ne prend pas un libellé qui commence par « Vir » sans être un virement (frontière de mot)", () => {
+    // Sans frontière de mot, « Virginie coiffeuse » matchait `^VIR`.
+    const out = queue([t("Virginie coiffeuse", -30, null)]);
+    expect(out[0].suggestion).toBeNull();
+  });
+
+  it("retombe sur le motif de virement quand la suggestion d'historique n'est plus choisissable", () => {
+    // La catégorie majoritaire de l'historique est archivée (connue, mais non
+    // choisissable) : la suggestion doit essayer la source suivante plutôt
+    // que de renoncer tout de suite.
+    const names = new Map([...NAMES, ["cat-loisirs", "Loisirs"]]);
+    const out = triageQueue({
+      txns: [
+        t("VIREMENT DE PAUL", 120, "cat-loisirs"),
+        t("VIREMENT DE PAUL", 120, null),
+      ],
+      categoryNameById: names,
+      ruledKeys: new Set(),
+      choosableNames: new Set(NAMES.values()),
+    });
+    expect(out[0].suggestion).toBe("Virements reçus");
+  });
+
+  it("ne suggère rien quand tout l'historique classé du commerçant est dans le repli", () => {
+    const out = queue([
+      t("SARL DUPONT", -10, "cat-autres"),
+      t("SARL DUPONT", -10, "cat-autres"),
+      t("SARL DUPONT", -10, null),
+    ]);
+    expect(out[0].suggestion).toBeNull();
+    // Les lignes en repli sont elles-mêmes non classées : les trois comptent.
+    expect(out[0].count).toBe(3);
+  });
+});
+
+describe("unsortedIdsFor", () => {
+  it("rend exactement les ids non classés d'un commerçant qui a des lignes classées et non classées", () => {
+    const sorted = t("MONOPRIX PARIS", -10, "cat-courses");
+    const unsortedNull = t("MONOPRIX PARIS", -20, null);
+    const unsortedFallback = t("MONOPRIX PARIS", -5, "cat-autres");
+    const other = t("AUTRE COMMERCE", -1, null);
+    const ids = unsortedIdsFor(
+      [sorted, unsortedNull, unsortedFallback, other],
+      "monoprix paris",
+      NAMES
+    );
+    expect([...ids].sort()).toEqual(
+      [unsortedNull.id, unsortedFallback.id].sort()
+    );
   });
 });
 
