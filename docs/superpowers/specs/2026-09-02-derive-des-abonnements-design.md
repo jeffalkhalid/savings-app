@@ -176,7 +176,9 @@ ce qui est l'intention.
 ## 8. Tests
 
 - `drift.test.ts` : pente et R² sur une série strictement croissante ; pente nulle sur une série
-  plate ; R² faible sur une série bruitée ; les trois seuils, chacun testé au bord ; le mois en cours
+  plate ; R² faible sur une série bruitée ; les seuils de mois et d'impact testés au bord (retenu d'un côté, écarté de
+  l'autre) et le seuil de R² encadré par un cas franchement bruité et un cas franchement régulier —
+  fabriquer une série dont le R² vaut exactement 0,5 n'apprendrait rien de plus ; le mois en cours
   exclu ; l'axe en mois calendaires vérifié par un cas avec un mois manquant, dont le résultat diffère
   de celui qu'un axe en rang donnerait ; `recent` égal à la médiane des trois derniers mois observés ;
   variance nulle et mois unique ne produisant ni `NaN` ni exception ; classement par impact annuel
