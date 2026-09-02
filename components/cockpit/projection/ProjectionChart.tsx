@@ -19,6 +19,10 @@ import type { MonthPoint } from "@/lib/cockpit/shock";
  * résorbé à l'anniversaire suivant, donc un tracé annuel masquerait le creux
  * que cet écran existe pour montrer. Les graduations restent annuelles pour
  * rester lisibles.
+ *
+ * Le domaine Y utilise une fonction pour ancrer l'étage à zéro quand la
+ * trajectoire reste positive (comportement par défaut recharts), tout en
+ * admettant les valeurs négatives quand un choc érode le capital.
  */
 export function ProjectionChart({
   series,
@@ -27,10 +31,11 @@ export function ProjectionChart({
   series: MonthPoint[];
   shocked?: MonthPoint[] | null;
 }) {
-  const data = series.map((p, i) => ({
+  const shockedByMonth = new Map((shocked ?? []).map((p) => [p.month, p.value]));
+  const data = series.map((p) => ({
     month: p.month,
     value: p.value,
-    shocked: shocked ? shocked[i]?.value : undefined,
+    shocked: shockedByMonth.get(p.month),
   }));
   const ticks = series
     .filter((p) => p.month % 12 === 0)
@@ -57,7 +62,7 @@ export function ProjectionChart({
               axisLine={false}
               tickFormatter={(m: number) => `${m / 12}a`}
             />
-            <YAxis hide domain={["auto", "auto"]} />
+            <YAxis hide domain={[(min: number) => Math.min(0, min), "auto"]} />
             <Tooltip
               formatter={(v: number, name: string) =>
                 [eur(v), name === "shocked" ? "avec chocs" : "référence"]
@@ -71,7 +76,7 @@ export function ProjectionChart({
               strokeWidth={2.5}
               fill="url(#projGrad)"
             />
-            {shocked && (
+            {shocked && shocked.length > 0 && (
               <Line
                 type="monotone"
                 dataKey="shocked"
