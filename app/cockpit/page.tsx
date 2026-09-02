@@ -368,6 +368,7 @@ export default function DashboardPage() {
             onEditBudgets={() => setShowBudgets(true)}
             onOpenMerchants={() => router.push("/cockpit/commercants")}
             onOpenEvolution={() => router.push("/cockpit/evolution")}
+            onOpenDrift={() => router.push("/cockpit/derive")}
           />
         </>
       )}

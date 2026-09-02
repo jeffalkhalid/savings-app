@@ -9,6 +9,7 @@ export function CategoryBreakdown({
   onEditBudgets,
   onOpenMerchants,
   onOpenEvolution,
+  onOpenDrift,
 }: {
   insights: CategoryInsight[];
   budgets: Record<string, number>;
@@ -16,6 +17,7 @@ export function CategoryBreakdown({
   onEditBudgets: () => void;
   onOpenMerchants: () => void;
   onOpenEvolution: () => void;
+  onOpenDrift: () => void;
 }) {
   const budgetOf = (id: string) => budgets[id] ?? null;
   return (
@@ -23,6 +25,13 @@ export function CategoryBreakdown({
       <div className="flex justify-between items-baseline mb-1">
         <div className="font-display text-[15px]">Par catégorie</div>
         <div className="flex items-baseline gap-3">
+          <button
+            type="button"
+            onClick={onOpenDrift}
+            className="text-[12px] text-ink-muted"
+          >
+            Dérive
+          </button>
           <button
             type="button"
             onClick={onOpenEvolution}
