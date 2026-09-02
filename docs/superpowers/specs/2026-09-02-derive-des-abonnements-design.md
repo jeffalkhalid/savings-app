@@ -109,8 +109,11 @@ dans le même mois a une variance en `x` nulle : il est écarté, aucune pente n
 ### 3.3 `recent`
 
 Médiane des trois derniers mois observés — **pas** la valeur ajustée par la droite. C'est le montant
-proposé par l'action « recaler », et un montant attendu doit être un nombre qui s'est réellement
-produit, pas une sortie de modèle.
+proposé par les actions « recaler » et « suivre », et un montant attendu doit être un nombre qui
+s'est réellement produit, pas une sortie de modèle. Il est écrit **tel quel, centimes compris, sans
+arrondi** : `expected_amount` est une colonne `numeric`, et tous ses autres producteurs — la
+confirmation manuelle dans `EngagementsModal`, dont le champ de saisie accepte des décimales —
+stockent déjà ce qui s'est réellement produit, jamais un chiffre rond.
 
 ## 4. L'écran `/cockpit/derive`
 
@@ -126,7 +129,8 @@ Les dérives dont la clé correspond à un `recurring_charges` actif. Chaque lig
 - **`→ Y € sur un an`**, l'impact annuel, qui est ce qui décide d'agir ou non ;
 - en discret, `N mois observés` et la qualité de l'ajustement ;
 - les barres mensuelles (`MerchantSeriesBars`, déjà au projet) ;
-- deux actions : **Fiche** et **Recaler à Z €**.
+- deux actions : **Fiche** et **Recaler à Z €**, Z étant `recent` tel quel, centimes compris et sans
+  arrondi (voir §3.3).
 
 ### 4.2 Section « Récurrences non suivies »
 
@@ -136,6 +140,13 @@ attendu, exactement ce que fait déjà le panneau « Détectés ».
 
 Cette section est ce qui lève la dépendance à la curation : les hausses qu'on n'a pas vues sont
 précisément sur ce qu'on n'a pas pris le temps de confirmer.
+
+**Limite connue.** `detectRecurring` ne regarde que les six derniers mois : un commerçant dont la
+dérive franchit les trois seuils de §3.2 mais qu'il ne voit pas dans cette fenêtre — une charge
+trimestrielle, un abonnement arrêté il y a quatre mois — n'apparaît dans **aucune** des deux
+sections, sans qu'aucun message ne le signale. C'est un trou assumé de cette conception, pas un
+défaut de l'implémentation : le combler demanderait une détection de récurrence propre à cet écran,
+hors périmètre ici.
 
 ### 4.3 La fiche commerçant
 
