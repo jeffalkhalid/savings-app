@@ -53,12 +53,13 @@ export function simulate(
    */
   const growth5yAt = (t: number): number => {
     if (!shocked) return growth5y;
-    // Les années antérieures à la fenêtre simulée sont comptées au taux de
-    // base : une cohorte déjà en place avant l'année 0 a accumulé sa
-    // plus-value hors de la simulation, et aucun choc daté ne s'y applique.
-    // Cela rend aussi growth5yAt(0) exactement égal au scalaire d'origine.
-    let g = (1 + rate) ** Math.max(0, 5 - t);
-    for (let k = Math.max(0, t - 5); k < t; k++) g *= factors[k];
+    // Fenêtre t−4 … t : une cohorte déposée en t−5 entre dans le portefeuille
+    // APRÈS la croissance de son année, donc elle ne subit pas `factors[t-5]`,
+    // et elle subit bien celle de l'année où elle est recyclée. Les années
+    // antérieures à la simulation sont comptées au taux de base : leur
+    // plus-value s'est accumulée hors fenêtre, aucun choc daté ne s'y applique.
+    let g = (1 + rate) ** Math.max(0, 4 - t);
+    for (let k = Math.max(0, t - 4); k <= t; k++) g *= factors[k];
     return g;
   };
 
@@ -109,7 +110,10 @@ export function simulate(
 
     // Croissance et part de plus-value de la cohorte recyclée cette année.
     const g5 = growth5yAt(t);
-    const gainFrac = 1 - 1 / g5;
+    // Une cohorte qui vaut moins qu'à son dépôt n'a AUCUNE plus-value : ni CSG
+    // à prélever, ni base fiscale à gonfler. Sans ces deux bornes, un krach
+    // rembourse de l'impôt et crédite plus de base que le montant retiré.
+    const gainFrac = Math.max(0, 1 - 1 / g5);
 
     // Mature this year = our matured cohort (deposited 5 years ago)
     // + initial PEG cohort scheduled to unlock this year (only if using PEG)
@@ -155,7 +159,7 @@ export function simulate(
 
     // Basis tracking
     if (mature > 0) {
-      const basisWithdrawn = W / g5;
+      const basisWithdrawn = Math.min(W, W / g5);
       basisPeg += K_peg_t + M_net + (netRedeposit - basisWithdrawn);
     } else {
       basisPeg += K_peg_t;

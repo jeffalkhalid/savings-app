@@ -253,4 +253,60 @@ describe("simulateAll sous choc", () => {
     expect(base.annual[0].N).toBeGreaterThan(0);
     expect(shocked.annual[0].N).toBeCloseTo(base.annual[0].N, 6);
   });
+
+  it("N n'est jamais négatif sous un krach qui fait chuter g5 sous 1", () => {
+    // À 6 %, (1.06)^5 * 0.7 = 0.9368… < 1 : sans le clamp de `gainFrac`, la
+    // cohorte recyclée en année 8 (déposée en année 3, krachée le jour de son
+    // dépôt) afficherait une CSG négative. C'est l'assertion dont l'absence a
+    // laissé passer le Critical.
+    const shocked = simulate(
+      "A",
+      withShocks([{ kind: "krach", atYear: 3, dropPct: 0.3 }])
+    );
+    for (const a of shocked.annual) {
+      expect(a.N).toBeGreaterThanOrEqual(0);
+    }
+  });
+
+  it("une cohorte préexistante recyclée en pleine fenêtre du krach ne prélève pas de CSG négative", () => {
+    // Cohorte de 8000 € débloquée en année 2 ; krach de 30 % en année 1.
+    // Fenêtre de g5(2) = t-4..t = -2..2 -> bornée à 0..2, donc :
+    //   g5(2) = 1.06^2 * factors[0] * factors[1] * factors[2]
+    //         = 1.1236 * 1.06 * (1.06 * 0.7) * 1.06
+    //         = 1.06^4 * 0.742 ≈ 1.262477 * 0.742 ≈ 0.936758  (< 1)
+    // Sans le clamp, gainFrac = 1 - 1/0.936758 ≈ -0.0675 et N serait négatif.
+    // Les années 1-4 n'étaient testées par aucun test avant ce chantier —
+    // exactement où la CSG négative apparaissait pour une cohorte préexistante.
+    const p = {
+      ...DEFAULT_PARAMS,
+      initialPEG: 20000,
+      initialPegUnlock2: 8000,
+    };
+    const shocked = simulate("A", {
+      ...p,
+      shocks: [{ kind: "krach" as const, atYear: 1, dropPct: 0.3 }],
+    });
+    expect(shocked.annual[2].N).toBeGreaterThanOrEqual(0);
+    expect(Number.isFinite(shocked.annual[2].N)).toBe(true);
+  });
+
+  it("un krach de 100% reste fini, y compris sur une stratégie smart", () => {
+    // dropPct: 1 -> factors[1] = 0, donc tout g5 dont la fenêtre couvre
+    // l'année 1 (t = 1..5) vaut 0. gainFrac est alors clampé à 0 (et non
+    // -Infinity) : pour les stratégies "smart" (E, F), targetW reste fini
+    // au lieu de 0 * -Infinity = NaN, qui aurait pollué P_peg, basis_PEG,
+    // gross_total, tax_total et net_total.
+    const p = {
+      ...DEFAULT_PARAMS,
+      initialPEG: 20000,
+      initialPegUnlock2: 8000,
+      shocks: [{ kind: "krach" as const, atYear: 1, dropPct: 1 }],
+    };
+    const results = simulateAll(p);
+    for (const r of results) {
+      expect(Number.isFinite(r.summary.net_total)).toBe(true);
+    }
+    const smart = results.find((r) => r.strategy === "E")!;
+    expect(Number.isFinite(smart.annual[3].N)).toBe(true);
+  });
 });
