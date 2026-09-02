@@ -161,18 +161,23 @@ describe("triageQueue — ce que porte une entrée", () => {
   it("rend jusqu'à quatre libellés distincts en exemple", () => {
     // Les exemples servent à repérer un regroupement abusif avant de classer
     // vingt lignes d'un coup : ils doivent être distincts.
+    // Les suffixes sont des CHIFFRES : `normalizePayee` les retire, donc ces
+    // six libellés partagent la clé « monoprix ». Avec des lettres, ils
+    // formeraient six commerçants distincts.
     const out = queue([
-      t("MONOPRIX A", -10),
-      t("MONOPRIX A", -10),
-      t("MONOPRIX B", -10),
-      t("MONOPRIX C", -10),
-      t("MONOPRIX D", -10),
-      t("MONOPRIX E", -10),
+      t("MONOPRIX 1", -10),
+      t("MONOPRIX 1", -10),
+      t("MONOPRIX 2", -10),
+      t("MONOPRIX 3", -10),
+      t("MONOPRIX 4", -10),
+      t("MONOPRIX 5", -10),
     ]);
+    expect(out).toHaveLength(1);
+    expect(out[0].key).toBe("monoprix");
     expect(out[0].samples).toHaveLength(4);
     expect(new Set(out[0].samples).size).toBe(4);
     // Le plus fréquent d'abord.
-    expect(out[0].samples[0]).toBe("MONOPRIX A");
+    expect(out[0].samples[0]).toBe("MONOPRIX 1");
   });
 
   it("classe par total non classé décroissant", () => {
