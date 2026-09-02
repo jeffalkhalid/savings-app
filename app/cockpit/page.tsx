@@ -41,6 +41,7 @@ import { CategoryBreakdown } from "@/components/cockpit/CategoryBreakdown";
 import { EngagementsBar } from "@/components/cockpit/EngagementsBar";
 import { MonthPaceCard } from "@/components/cockpit/MonthPaceCard";
 import { monthPace } from "@/lib/cockpit/pace";
+import { fixedVariableFromInsights } from "@/lib/cockpit/fixed";
 import { EngagementsModal } from "@/components/cockpit/EngagementsModal";
 import { TransferTriage } from "@/components/cockpit/TransferTriage";
 import { TransferNudge } from "@/components/cockpit/TransferNudge";
@@ -94,10 +95,10 @@ export default function DashboardPage() {
   const [classifying, setClassifying] = useState(false);
 
   const { settings, refetch: refetchSettings } = useUserSettings(user.id);
-  const { txns, refetch } = useTransactions(month, settings.salary_shift);
+  const { txns, loading: txnsLoading, refetch } = useTransactions(month, settings.salary_shift);
   const { categories, refetch: refetchCategories } = useCategories();
   const { budgets, refetch: refetchBudgets } = useCategoryBudgets();
-  const { charges, refetch: refetchCharges } = useRecurringCharges();
+  const { charges, loading: chargesLoading, refetch: refetchCharges } = useRecurringCharges();
   const { txns: allTxns } = useAllTransactions();
   const { accounts } = useAccounts();
   const { rows: monthlyByCat, error: catError } = useMonthlyByCategory(user.id);
@@ -137,15 +138,32 @@ export default function DashboardPage() {
   // journalier sur un mois clos serait absurde.
   const isCurrentMonth = month === currentMonth();
   const today = todayISO();
+  const fixedCategoryIds = useMemo(
+    () =>
+      new Set(categories.filter((c) => c.is_fixed).map((c) => c.id)),
+    [categories]
+  );
+  // `totals.variable` (dépenses moins engagements CONFIRMÉS) et le variable
+  // tiré des insights (dépenses hors catégories fixes, confirmées ou non)
+  // sont chacun un majorant du variable réellement variable — le premier
+  // laisse passer un loyer non confirmé, le second laisse passer un
+  // engagement confirmé dans une catégorie non marquée fixe. Le plus petit
+  // des deux est donc le majorant le plus serré que les données existantes
+  // permettent. Sans aucune catégorie marquée fixe, ce minimum dégénère vers
+  // `totals.variable` : le comportement actuel, inchangé.
+  const insightsVariable = useMemo(
+    () => fixedVariableFromInsights(insights, fixedCategoryIds).variable,
+    [insights, fixedCategoryIds]
+  );
   const pace = useMemo(
     () =>
       monthPace({
         resteAVivre: metrics.resteAVivre,
         pendingEngagements: totals.pending,
-        variable: totals.variable,
+        variable: Math.min(totals.variable, insightsVariable),
         today,
       }),
-    [metrics.resteAVivre, totals.pending, totals.variable, today]
+    [metrics.resteAVivre, totals.pending, totals.variable, insightsVariable, today]
   );
   const candidates = useMemo(() => {
     const confirmed = new Set(charges.map((c) => c.payee_key));
@@ -325,7 +343,9 @@ export default function DashboardPage() {
               onDrill={() => setShowFixed(true)}
             />
           )}
-          {isCurrentMonth && <MonthPaceCard pace={pace} />}
+          {isCurrentMonth && !txnsLoading && !chargesLoading && (
+            <MonthPaceCard pace={pace} />
+          )}
           {catError && (
             <p className="text-ink-muted text-xs mb-2">
               Répartition indisponible — réessaie plus tard.
