@@ -28,7 +28,12 @@ export default function TriPage() {
 
   const [skipped, setSkipped] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
-  const [failure, setFailure] = useState("");
+  const [failure, setFailure] = useState<{
+    key: string;
+    label: string;
+    message: string;
+  } | null>(null);
+  const [justApplied, setJustApplied] = useState<string | null>(null);
   const [showAll, setShowAll] = useState(false);
 
   const activeCategories = useMemo(
@@ -77,7 +82,14 @@ export default function TriPage() {
 
   const ready = !loading && rulesLoaded;
 
+  // Le commerçant reste verrouillé tant que le refetch n'a pas fait avancer
+  // la file : sans cela, une carte encore affichée après un envoi réussi
+  // accepte un second clic sur un autre chip et écrase la décision qui vient
+  // d'être prise.
+  const locked = busy || (current !== null && current.key === justApplied);
+
   const apply = async (categoryName: string) => {
+    if (locked) return;
     setShowAll(false);
     if (!current) return;
     const cat = activeCategories.find((c) => c.name === categoryName);
@@ -95,7 +107,7 @@ export default function TriPage() {
       .map((t) => t.id);
 
     setBusy(true);
-    setFailure("");
+    setFailure(null);
     let moved = false;
     try {
       if (ids.length) {
@@ -105,15 +117,23 @@ export default function TriPage() {
       await setCategoryRules(user.id, [
         { payeeKey: current.key, categoryId: cat.id },
       ]);
+      // Verrouille la carte jusqu'à ce que le refetch fasse réellement
+      // avancer la file : un échec ne verrouille pas, le commerçant doit
+      // rester réessayable.
+      setJustApplied(current.key);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Erreur";
       // Distinguer les deux échecs : si les lignes sont déjà déplacées, le
       // dire, sinon l'utilisateur croit que rien n'a bougé et recommence.
-      setFailure(
-        moved
-          ? `Lignes reclassées, mais la règle n'a pas pu être enregistrée : ${msg}`
-          : msg
-      );
+      // Rattaché au commerçant courant : la file peut avoir avancé avant que
+      // le message ne soit lu, il doit rester lisible sous le bon libellé.
+      setFailure({
+        key: current.key,
+        label: current.label,
+        message: moved
+          ? `lignes reclassées, mais la règle n'a pas pu être enregistrée : ${msg}`
+          : msg,
+      });
     } finally {
       setBusy(false);
       // La file est toujours recalculée depuis la base, jamais retirée de
@@ -167,6 +187,12 @@ export default function TriPage() {
         </div>
       )}
 
+      {failure && (
+        <p className="text-accent text-[12.5px] mb-3">
+          {failure.label} : {failure.message}
+        </p>
+      )}
+
       {ready && !error && current && (
         <div className="bg-card rounded-2xl p-4">
           <div className="text-[15px] font-medium break-words">
@@ -197,10 +223,6 @@ export default function TriPage() {
             </div>
           )}
 
-          {failure && (
-            <p className="text-accent text-[12.5px] mt-3">{failure}</p>
-          )}
-
           <div className="mt-4 grid gap-1.5">
             {chips.map((name) => {
               const suggested = name === current.suggestion;
@@ -208,7 +230,7 @@ export default function TriPage() {
                 <button
                   key={name}
                   type="button"
-                  disabled={busy}
+                  disabled={locked}
                   onClick={() => apply(name)}
                   className={`flex items-center gap-2 text-left py-3 px-3 rounded-lg text-[14px] disabled:opacity-50 ${
                     suggested
@@ -231,7 +253,7 @@ export default function TriPage() {
           <div className="flex gap-3 mt-3">
             <button
               type="button"
-              disabled={busy}
+              disabled={locked}
               onClick={() => setShowAll(true)}
               className="flex-1 text-[13px] text-ink-muted py-2.5 disabled:opacity-50"
             >
@@ -239,7 +261,7 @@ export default function TriPage() {
             </button>
             <button
               type="button"
-              disabled={busy}
+              disabled={locked}
               onClick={() =>
                 setSkipped((s) => new Set(s).add(current.key))
               }
