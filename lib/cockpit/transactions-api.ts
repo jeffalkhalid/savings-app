@@ -84,6 +84,28 @@ export async function deleteTransaction(id: string): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
+/**
+ * Suppression en masse, par lots.
+ *
+ * Découpé parce qu'un `in (…)` de plusieurs centaines d'identifiants tient dans
+ * l'URL jusqu'au jour où il n'y tient plus, et l'échec serait alors un 414
+ * illisible plutôt qu'une erreur métier. Les lots partent en série : si l'un
+ * échoue, les précédents sont déjà supprimés et l'appelant doit recharger —
+ * c'est pourquoi `useBulkDelete` appelle `onDone()` même sur le chemin d'erreur.
+ */
+export async function deleteTransactions(ids: string[]): Promise<void> {
+  const CHUNK = 200;
+  for (let i = 0; i < ids.length; i += CHUNK) {
+    const slice = ids.slice(i, i + CHUNK);
+    if (!slice.length) continue;
+    const { error } = await supabase
+      .from("transactions")
+      .delete()
+      .in("id", slice);
+    if (error) throw new Error(error.message);
+  }
+}
+
 export type ImportRow = {
   date: string; // ISO
   amount: number; // signé brut (préservé tel quel)

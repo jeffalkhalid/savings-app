@@ -55,7 +55,9 @@ import { RemindersModal } from "@/components/cockpit/RemindersModal";
 import { ReminderModal } from "@/components/cockpit/ReminderModal";
 import { BudgetsModal } from "@/components/cockpit/BudgetsModal";
 import { CategoryPickerSheet } from "@/components/cockpit/CategoryPickerSheet";
+import { ConfirmDeleteSheet } from "@/components/cockpit/ConfirmDeleteSheet";
 import { useBulkRecategorise } from "@/lib/cockpit/use-bulk-recategorise";
+import { useBulkDelete } from "@/lib/cockpit/use-bulk-delete";
 
 
 const monthLabelOf = (m: string) =>
@@ -99,12 +101,20 @@ export default function DashboardPage() {
   const { categories, refetch: refetchCategories } = useCategories();
   const { budgets, refetch: refetchBudgets } = useCategoryBudgets();
   const { charges, loading: chargesLoading, refetch: refetchCharges } = useRecurringCharges();
-  const { txns: allTxns } = useAllTransactions();
+  const { txns: allTxns, refetch: refetchAllTxns } = useAllTransactions();
   const { accounts } = useAccounts();
   const { rows: monthlyByCat, error: catError } = useMonthlyByCategory(user.id);
   const { reminders, refetch: refetchReminders } = useReminders();
   const { goals } = useGoals();
-  const bulk = useBulkRecategorise(user.id, refetch);
+  // `detectRecurring(allTxns, month)` alimente le panneau « Détectés » : après
+  // une action en masse, l'historique complet doit être rechargé en plus du
+  // mois affiché, sinon les candidats restent bâtis sur des lignes supprimées.
+  const refetchAfterBulk = useCallback(() => {
+    refetch();
+    refetchAllTxns();
+  }, [refetch, refetchAllTxns]);
+  const bulk = useBulkRecategorise(user.id, refetchAfterBulk);
+  const del = useBulkDelete(refetchAfterBulk);
 
   const engagementKeys = useMemo(
     () => new Set(charges.map((c) => c.payee_key)),
@@ -315,6 +325,7 @@ export default function DashboardPage() {
       ) : drill ? (
         <OpsDrill
           onBulkCategorise={bulk.start}
+          onBulkDelete={del.start}
           mode={drill.kind === "all" ? "all" : "category"}
           title={drill.kind === "all" ? ALL_META[drill.type].title : drillCat?.name ?? ""}
           Icon={drill.kind === "all" ? ALL_META[drill.type].Icon : categoryIcon(drillCat?.name ?? "")}
@@ -364,6 +375,7 @@ export default function DashboardPage() {
             onEditBudgets={() => setShowBudgets(true)}
             onOpenMerchants={() => router.push("/cockpit/commercants")}
             onOpenEvolution={() => router.push("/cockpit/evolution")}
+            onOpenDrift={() => router.push("/cockpit/derive")}
           />
         </>
       )}
@@ -483,6 +495,16 @@ export default function DashboardPage() {
           }`}
           onPick={(name) => bulk.apply(name, categories)}
           onClose={bulk.cancel}
+        />
+      )}
+      {del.note && <p className="text-[13px] mb-3 text-emerald">{del.note}</p>}
+      {del.pending && (
+        <ConfirmDeleteSheet
+          txns={del.pending}
+          busy={del.busy}
+          error={del.error}
+          onConfirm={del.confirm}
+          onClose={del.cancel}
         />
       )}
     </main>

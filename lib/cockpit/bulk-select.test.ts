@@ -4,6 +4,8 @@ import {
   rulesFromSelection,
   rulesFromTxns,
   bulkSummary,
+  deletionTotals,
+  deleteSummary,
 } from "./bulk-select";
 import type { Txn } from "./types";
 
@@ -96,5 +98,46 @@ describe("rulesFromTxns", () => {
 
   it("ne produit rien pour une sélection vide", () => {
     expect(rulesFromTxns([], "cat-1")).toEqual([]);
+  });
+});
+
+describe("deletionTotals", () => {
+  const d = (id: string, amount: number): Txn => ({
+    id,
+    date: "2026-09-01",
+    amount,
+    description: `op ${id}`,
+    type: amount < 0 ? "expense" : "income",
+  });
+
+  it("compte les lignes et somme les montants signés", () => {
+    // Signé, pas en valeur absolue : la confirmation doit dire la vérité sur
+    // une sélection qui mêle une dépense et un remboursement.
+    const out = deletionTotals([d("1", -48.2), d("2", 30), d("3", -62.1)]);
+    expect(out.count).toBe(3);
+    expect(out.total).toBeCloseTo(-80.3);
+  });
+
+  it("rend un total positif quand la sélection ne contient que des revenus", () => {
+    const out = deletionTotals([d("1", 100), d("2", 50)]);
+    expect(out).toEqual({ count: 2, total: 150 });
+  });
+
+  it("rend zéro sur une sélection vide", () => {
+    expect(deletionTotals([])).toEqual({ count: 0, total: 0 });
+  });
+
+  it("accepte un montant stocké en chaîne", () => {
+    // Supabase rend les numeric en chaîne selon le pilote ; le reste du code
+    // passe déjà par Number() pour cette raison.
+    const rows = [{ ...d("1", 0), amount: "-12.5" as unknown as number }];
+    expect(deletionTotals(rows).total).toBeCloseTo(-12.5);
+  });
+});
+
+describe("deleteSummary", () => {
+  it("accorde le pluriel", () => {
+    expect(deleteSummary(1)).toBe("1 opération supprimée");
+    expect(deleteSummary(3)).toBe("3 opérations supprimées");
   });
 });
