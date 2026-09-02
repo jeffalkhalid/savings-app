@@ -29,7 +29,7 @@ import {
 import { savingsMood } from "@/lib/cockpit/mood";
 import { buildNotes } from "@/lib/cockpit/cockpit-notes";
 import { categoryIcon } from "@/lib/cockpit/category-icon";
-import { Wallet, TrendingUp, PiggyBank, ArrowLeftRight, Settings, Bell, type LucideIcon } from "lucide-react";
+import { Wallet, TrendingUp, PiggyBank, ArrowLeftRight, Settings, Bell, Home, type LucideIcon } from "lucide-react";
 import { currentMonth, todayISO } from "@/lib/cockpit/format";
 import { updateTransaction } from "@/lib/cockpit/transactions-api";
 import type { Txn, TxnType } from "@/lib/cockpit/types";
@@ -274,6 +274,11 @@ export default function DashboardPage() {
         <h1 className="font-display text-2xl">Cockpit</h1>
         <div className="flex items-center gap-2">
           <MonthSwitcher month={month} onChange={changeMonth} />
+          {/* Vers le simulateur d'épargne salariale, l'autre moitié de l'app :
+              le Cockpit n'y menait par aucun lien. */}
+          <Link href="/" aria-label="Simulateur d'épargne salariale" className="text-ink-muted">
+            <Home size={18} />
+          </Link>
           <Link href="/cockpit/import" className="text-ink-muted text-sm">
             Import
           </Link>
