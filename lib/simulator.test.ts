@@ -310,3 +310,88 @@ describe("simulateAll sous choc", () => {
     expect(Number.isFinite(smart.annual[3].N)).toBe(true);
   });
 });
+
+describe("simulateAll sous choc de politique", () => {
+  const withPolicy = (policyShocks: SimulationParams["policyShocks"]) => ({
+    ...DEFAULT_PARAMS,
+    policyShocks,
+  });
+
+  it("une liste vide ne change rien", () => {
+    expect(summaries(withPolicy([]))).toEqual(summaries(DEFAULT_PARAMS));
+  });
+
+  it("un PFU relevé frappe le PER et laisse le PEG pur intact", () => {
+    // LE test d'assiette. La stratégie A n'utilise que le PEG : sa poche PER
+    // reste vide, donc le PFU sur les plus-values PER ne peut pas la toucher.
+    // Un choc qui frapperait tout le monde ne prouverait rien.
+    const base = summaries(DEFAULT_PARAMS);
+    const shocked = summaries(
+      withPolicy([{ kind: "fiscalite", fromYear: 0, rates: { pfuPER: 0.45 } }])
+    );
+    const byKey = (xs: typeof base, k: string) =>
+      xs.find((x) => x.strategy === k)!;
+    expect(byKey(shocked, "A").net_total).toBeCloseTo(
+      byKey(base, "A").net_total,
+      6
+    );
+    expect(byKey(shocked, "B").net_total).toBeLessThan(
+      byKey(base, "B").net_total
+    );
+  });
+
+  it("un abondement supprimé ramène le versement annuel à I + P + V", () => {
+    // La spec le dit : la stratégie « PER pur » est touchée elle aussi, car
+    // K_PER_net capte son propre abondement. Ce qui discrimine, c'est le
+    // versement lui-même.
+    const p = withPolicy([{ kind: "abondement", fromYear: 0, factor: 0 }]);
+    const out = simulate("A", p);
+    const expected =
+      DEFAULT_PARAMS.interessement +
+      DEFAULT_PARAMS.participation +
+      DEFAULT_PARAMS.volontaire;
+    expect(out.annual[0].K_PEG).toBeCloseTo(expected, 6);
+    expect(simulate("A", DEFAULT_PARAMS).annual[0].K_PEG).toBeGreaterThan(
+      expected
+    );
+  });
+
+  it("un abondement daté ne touche que les années suivantes", () => {
+    const out = simulate(
+      "A",
+      withPolicy([{ kind: "abondement", fromYear: 3, factor: 0 }])
+    );
+    const ref = simulate("A", DEFAULT_PARAMS);
+    expect(out.annual[2].K_PEG).toBeCloseTo(ref.annual[2].K_PEG, 6);
+    expect(out.annual[3].K_PEG).toBeLessThan(ref.annual[3].K_PEG);
+  });
+
+  it("une TMI datée change le résultat", () => {
+    // Sans l'accumulateur de base du bonus PEA, ce cas rendrait une base
+    // fausse — c'est le piège documenté au §3.1 de la spec.
+    const base = summaries(DEFAULT_PARAMS);
+    const shocked = summaries(
+      withPolicy([{ kind: "fiscalite", fromYear: 5, rates: { tmi: 0.45 } }])
+    );
+    const b = base.find((x) => x.strategy === "B")!;
+    const s = shocked.find((x) => x.strategy === "B")!;
+    expect(s.net_total).not.toBeCloseTo(b.net_total, 2);
+  });
+
+  it("un choc de marché et un choc fiscal se cumulent", () => {
+    const both = summaries({
+      ...DEFAULT_PARAMS,
+      shocks: [{ kind: "krach" as const, atYear: 3, dropPct: 0.3 }],
+      policyShocks: [
+        { kind: "fiscalite" as const, fromYear: 5, rates: { pfuPER: 0.45 } },
+      ],
+    });
+    const marketOnly = summaries({
+      ...DEFAULT_PARAMS,
+      shocks: [{ kind: "krach" as const, atYear: 3, dropPct: 0.3 }],
+    });
+    const b = marketOnly.find((x) => x.strategy === "B")!;
+    const s = both.find((x) => x.strategy === "B")!;
+    expect(s.net_total).toBeLessThan(b.net_total);
+  });
+});
