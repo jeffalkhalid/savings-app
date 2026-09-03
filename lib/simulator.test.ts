@@ -310,3 +310,197 @@ describe("simulateAll sous choc", () => {
     expect(Number.isFinite(smart.annual[3].N)).toBe(true);
   });
 });
+
+describe("simulateAll sous choc de politique", () => {
+  const withPolicy = (policyShocks: SimulationParams["policyShocks"]) => ({
+    ...DEFAULT_PARAMS,
+    policyShocks,
+  });
+
+  it("une liste vide ne change rien", () => {
+    expect(summaries(withPolicy([]))).toEqual(summaries(DEFAULT_PARAMS));
+  });
+
+  it("un PFU relevé frappe le PER et laisse le PEG pur intact", () => {
+    // LE test d'assiette. La stratégie A n'utilise que le PEG : sa poche PER
+    // reste vide, donc le PFU sur les plus-values PER ne peut pas la toucher.
+    // Un choc qui frapperait tout le monde ne prouverait rien.
+    const base = summaries(DEFAULT_PARAMS);
+    const shocked = summaries(
+      withPolicy([{ kind: "fiscalite", fromYear: 0, rates: { pfuPER: 0.45 } }])
+    );
+    const byKey = (xs: typeof base, k: string) =>
+      xs.find((x) => x.strategy === k)!;
+    // Exact : la poche PER de A est vide, donc un PFU sur le PER ne peut rien
+    // changer, pas même au dernier bit — au-delà de « proche », c'est identique.
+    expect(byKey(shocked, "A").net_total).toBe(byKey(base, "A").net_total);
+    expect(byKey(shocked, "B").net_total).toBeLessThan(
+      byKey(base, "B").net_total
+    );
+  });
+
+  it("un abondement supprimé ramène le versement annuel à I + P + V", () => {
+    // La spec le dit : la stratégie « PER pur » est touchée elle aussi, car
+    // K_PER_net capte son propre abondement. Ce qui discrimine, c'est le
+    // versement lui-même.
+    const p = withPolicy([{ kind: "abondement", fromYear: 0, factor: 0 }]);
+    const out = simulate("A", p);
+    const expected =
+      DEFAULT_PARAMS.interessement +
+      DEFAULT_PARAMS.participation +
+      DEFAULT_PARAMS.volontaire;
+    // Exact : `factor: 0` retire tout l'abondement, sans reste flottant —
+    // K_PEG_net_t redevient littéralement `I + P + V`.
+    expect(out.annual[0].K_PEG).toBe(expected);
+    expect(simulate("A", DEFAULT_PARAMS).annual[0].K_PEG).toBeGreaterThan(
+      expected
+    );
+  });
+
+  it("un abondement daté ne touche que les années suivantes", () => {
+    const out = simulate(
+      "A",
+      withPolicy([{ kind: "abondement", fromYear: 3, factor: 0 }])
+    );
+    const ref = simulate("A", DEFAULT_PARAMS);
+    expect(out.annual[2].K_PEG).toBeCloseTo(ref.annual[2].K_PEG, 6);
+    expect(out.annual[3].K_PEG).toBeLessThan(ref.annual[3].K_PEG);
+  });
+
+  it("une TMI datée déduit chaque versement au taux de son année", () => {
+    // Le piège du chantier (§3.1) : la base du bonus PEA est une SOMME de
+    // produits, pas un produit de sommes. Sans l'accumulateur, ce test
+    // échoue — l'ancien, qui vérifiait seulement « le résultat change »,
+    // passait même en le supprimant.
+    const out = simulate(
+      "B",
+      withPolicy([{ kind: "fiscalite", fromYear: 10, rates: { tmi: 0.45 } }])
+    );
+    const basis = out.summary.PEA_final - out.summary.PV_PEA;
+    // 10 années à 30 % puis 20 à 45 %, sur 1000 € de versement volontaire.
+    expect(basis).toBeCloseTo(10 * 0.3 * 1000 + 20 * 0.45 * 1000, 6);
+    // Et surtout : PAS le produit naïf, ni au taux de base ni à celui de sortie.
+    expect(basis).not.toBeCloseTo(0.3 * out.summary.vol_cumul_PER, 2);
+    // L'impôt de sortie, lui, EST un produit — au taux du jour de la sortie.
+    expect(out.summary.tax_PER_IR).toBeCloseTo(
+      0.45 * out.summary.vol_cumul_PER,
+      6
+    );
+  });
+
+  it("un choc de marché et un choc fiscal se cumulent, la même année", () => {
+    const both = summaries({
+      ...DEFAULT_PARAMS,
+      shocks: [{ kind: "krach" as const, atYear: 3, dropPct: 0.3 }],
+      policyShocks: [
+        { kind: "fiscalite" as const, fromYear: 3, rates: { pfuPER: 0.45 } },
+      ],
+    });
+    const marketOnly = summaries({
+      ...DEFAULT_PARAMS,
+      shocks: [{ kind: "krach" as const, atYear: 3, dropPct: 0.3 }],
+    });
+    const b = marketOnly.find((x) => x.strategy === "B")!;
+    const s = both.find((x) => x.strategy === "B")!;
+    expect(s.net_total).toBeLessThan(b.net_total);
+  });
+
+  it("un abondement supprimé supprime aussi l'abondement de recyclage", () => {
+    // Le test que le cas « année 0 » ne pouvait pas voir : à l'année 0 rien
+    // n'est encore arrivé à maturité. C'est au recyclage, à partir de la
+    // sixième année, que le taux de 20 % entre en jeu — et un abondement
+    // supprimé doit l'annuler, pas libérer du plafond.
+    const out = simulate("A", {
+      ...DEFAULT_PARAMS,
+      policyShocks: [{ kind: "abondement" as const, fromYear: 0, factor: 0 }],
+    });
+    const ref = simulate("A", DEFAULT_PARAMS);
+    for (const y of out.annual) {
+      expect(y.M_gross).toBe(0);
+      expect(y.M_net).toBe(0);
+    }
+    expect(ref.annual[6].M_gross).toBeGreaterThan(0);
+    expect(out.summary.net_total).toBeLessThan(ref.summary.net_total);
+  });
+
+  it("l'assiette du PFU est bien vide pour la stratégie PEG", () => {
+    // Épingle la prémisse du test d'assiette : il ne discrimine que parce que
+    // la poche PER de A reste vide.
+    expect(simulate("A", DEFAULT_PARAMS).summary.PV_PER).toBe(0);
+  });
+});
+
+describe("le plafond de recyclage ne rend jamais un abondement négatif", () => {
+  it("plafondPEG sous le barème : M_gross reste >= 0 chaque année, sans aucun choc", () => {
+    // Sans choc du tout : le slider de plafond seul suffit à faire passer
+    // `plafondPEG` sous l'abondement de base (590 € au barème par défaut). Le
+    // clamp de `M_cap_gross` doit tenir ce cas, pas seulement sous un choc
+    // d'abondement.
+    const p: SimulationParams = { ...DEFAULT_PARAMS, plafondPEG: 300 };
+    for (const r of simulateAll(p)) {
+      for (const y of r.annual) {
+        expect(y.M_gross).toBeGreaterThanOrEqual(0);
+      }
+    }
+  });
+});
+
+describe("identité bit à bit du chemin sans choc", () => {
+  /**
+   * Compare deux valeurs récursivement avec `toBe` (Object.is) à chaque
+   * feuille : les snapshots arrondissent au centime et ne verraient pas une
+   * régression sur les derniers bits d'un chemin non choqué. Petit helper
+   * local plutôt qu'une dépendance, comme demandé.
+   */
+  function assertBitIdentical(a: unknown, b: unknown, path = "root"): void {
+    if (Array.isArray(a) || Array.isArray(b)) {
+      expect(Array.isArray(a), path).toBe(true);
+      expect(Array.isArray(b), path).toBe(true);
+      const arrA = a as unknown[];
+      const arrB = b as unknown[];
+      expect(arrA.length, `${path}.length`).toBe(arrB.length);
+      for (let i = 0; i < arrA.length; i++) {
+        assertBitIdentical(arrA[i], arrB[i], `${path}[${i}]`);
+      }
+      return;
+    }
+    if (
+      a !== null &&
+      b !== null &&
+      typeof a === "object" &&
+      typeof b === "object"
+    ) {
+      const keysA = Object.keys(a as object).sort();
+      const keysB = Object.keys(b as object).sort();
+      expect(keysA, `${path} keys`).toEqual(keysB);
+      for (const k of keysA) {
+        assertBitIdentical(
+          (a as Record<string, unknown>)[k],
+          (b as Record<string, unknown>)[k],
+          `${path}.${k}`
+        );
+      }
+      return;
+    }
+    expect(a, path).toBe(b);
+  }
+
+  it("policyShocks absent, vide, ou daté hors horizon : résultat identique au bit près", () => {
+    const noField = DEFAULT_PARAMS;
+    const emptyList: SimulationParams = { ...DEFAULT_PARAMS, policyShocks: [] };
+    const beyondHorizon: SimulationParams = {
+      ...DEFAULT_PARAMS,
+      policyShocks: [
+        { kind: "fiscalite", fromYear: DEFAULT_PARAMS.years + 5, rates: { tmi: 0.9 } },
+      ],
+    };
+    const ref = simulateAll(noField);
+    for (const candidate of [emptyList, beyondHorizon]) {
+      const out = simulateAll(candidate);
+      for (let i = 0; i < ref.length; i++) {
+        assertBitIdentical(out[i].summary, ref[i].summary, `${out[i].strategy}.summary`);
+        assertBitIdentical(out[i].annual, ref[i].annual, `${out[i].strategy}.annual`);
+      }
+    }
+  });
+});

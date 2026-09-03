@@ -7,6 +7,8 @@ import type {
 import { STRATEGIES, STRATEGY_KEYS } from "./strategies";
 import { computeAbondement } from "./abondement";
 import { yearFactors } from "./market-shock";
+import { ratesByYear, abondementFactors, exitRates } from "./fiscal-shock";
+import type { FiscalRates } from "./fiscal-shock";
 
 export function simulate(
   strategy: StrategyKey,
@@ -28,11 +30,6 @@ export function simulate(
   const baseAbondPEG = computeAbondement(p.bareme.peg, I, P, V);
   const baseAbondPER = computeAbondement(p.bareme.per, I, P, V);
 
-  // CSG 9.7% applies ONLY to the abondement employeur (not to I, P, V).
-  // Intéressement and participation enter PEG/PER at their full gross value.
-  const K_PEG_net = I + P + V + baseAbondPEG * (1 - csgAb);
-  const K_PER_net = I + P + V + Math.min(baseAbondPER, plafondPER) * (1 - csgAb);
-
   const meta = STRATEGIES[strategy];
   const smart = meta.smart;
   const growth5y = (1 + rate) ** 5;
@@ -43,6 +40,22 @@ export function simulate(
   // est non vide : un choc daté hors de l'horizon ne doit rien changer, pas
   // même les derniers bits.
   const shocked = factors.some((f) => f !== 1 + rate);
+
+  const policyShocks = p.policyShocks ?? [];
+  const baseRates: FiscalRates = {
+    csgPlusValue: csgPV,
+    csgAbondement: csgAb,
+    tmi,
+    pfuPER,
+    csgPEA,
+  };
+  const rates = ratesByYear(baseRates, years, policyShocks);
+  const abondF = abondementFactors(years, policyShocks);
+  const exit = exitRates(rates, baseRates);
+  // La base du bonus PEA ne peut devenir une somme que si la TMI varie : sinon
+  // `Σ tmi × vol_t` différerait de `tmi × Σ vol_t` des derniers bits, pour
+  // rien. Voir §3.1 de la spec.
+  const tmiVaries = rates.some((y) => y.tmi !== tmi);
 
   /**
    * Croissance d'une cohorte déposée en `t - 5` et recyclée en `t`.
@@ -72,6 +85,9 @@ export function simulate(
   let basisPer = p.initialPerBasis;
   let volCumul = p.initialVolPER;
   let peaBonus = 0;
+  // Base nominale du bonus PEA, accumulée au taux de chaque année. Initialisée
+  // avec les versements antérieurs à la simulation, déduits au taux de base.
+  let peaBasisAcc = tmi * p.initialVolPER;
   let saturated = false;
 
   // Calendrier de déblocage des cohortes PEG existantes
@@ -104,8 +120,31 @@ export function simulate(
         break;
     }
 
-    const K_peg_t = using ? K_PEG_net : 0;
-    const K_per_t = using ? 0 : K_PER_net;
+    const r_t = rates[t] ?? baseRates;
+    // `?? baseRates` / `?? 1` sont du ceinture-et-bretelles sur un chemin
+    // inatteignable : `rates` et `abondF` sont dimensionnés sur
+    // `Math.round(years)`, mais `new Array(years).fill(0)` ci-dessus lève
+    // déjà un RangeError pour un horizon non entier, avant que `t` n'atteigne
+    // jamais un index hors bornes ici. Gardés par prudence, pas parce que ce
+    // cas se produit.
+    const abondPEG_t = baseAbondPEG * (abondF[t] ?? 1);
+    const abondPER_t = baseAbondPER * (abondF[t] ?? 1);
+    // CSG 9.7% applies ONLY to the abondement employeur (not to I, P, V).
+    // Intéressement and participation enter PEG/PER at their full gross value.
+    // Multiplier par un facteur qui vaut exactement 1 est exact en IEEE-754 :
+    // sans choc d'abondement, ces deux expressions sont celles d'avant, au bit
+    // près.
+    const K_PEG_net_t = I + P + V + abondPEG_t * (1 - r_t.csgAbondement);
+    const K_PER_net_t =
+      I + P + V + Math.min(abondPER_t, plafondPER) * (1 - r_t.csgAbondement);
+    // Le taux d'abondement du recyclage est de l'argent employeur au même titre
+    // que le versement : un facteur qui supprime l'abondement doit le supprimer
+    // aussi, sans quoi « supprimé » ferait toucher DAVANTAGE (le plafond libéré
+    // n'étant plus consommé par le versement).
+    const abondRate_t = 0.2 * (abondF[t] ?? 1);
+
+    const K_peg_t = using ? K_PEG_net_t : 0;
+    const K_per_t = using ? 0 : K_PER_net_t;
     const vol_t = using ? 0 : V;
 
     // Croissance et part de plus-value de la cohorte recyclée cette année.
@@ -131,17 +170,27 @@ export function simulate(
     let M_net = 0;
 
     if (mature > 0) {
-      const M_cap_gross = plafondPEG - (using ? baseAbondPEG : 0);
+      // Clampé à 0 : un choc d'abondement au-delà d'environ ×3,9, ou un
+      // `plafondPEG` réglé sous l'abondement du barème, rendraient sinon
+      // `M_cap_gross` négatif — l'employeur « reprendrait » de l'argent sur le
+      // recyclage, ce qui n'a pas de sens. Ce plancher existe même sans choc :
+      // le slider de plafond seul peut descendre sous l'abondement de base.
+      const M_cap_gross = Math.max(0, plafondPEG - (using ? abondPEG_t : 0));
       if (smart) {
-        const targetW = M_cap_gross / 0.2 / (1 - gainFrac * csgPV);
+        // Sans abondement de recyclage, retirer ne rapporte plus rien et ne
+        // coûte que la CSG : la cible est nulle.
+        const targetW =
+          abondRate_t > 0
+            ? M_cap_gross / abondRate_t / (1 - gainFrac * r_t.csgPlusValue)
+            : 0;
         W = Math.min(targetW, mature);
       } else {
         W = mature;
       }
-      N = W * gainFrac * csgPV;
+      N = W * gainFrac * r_t.csgPlusValue;
       netRedeposit = W - N;
-      M_gross = Math.min(M_cap_gross, netRedeposit * 0.2);
-      M_net = M_gross * (1 - csgAb);
+      M_gross = Math.min(M_cap_gross, netRedeposit * abondRate_t);
+      M_net = M_gross * (1 - r_t.csgAbondement);
 
       if (
         strategy === "C" &&
@@ -166,7 +215,8 @@ export function simulate(
     }
     basisPer += K_per_t;
     volCumul += vol_t;
-    peaBonus = peaBonus * factors[t] + tmi * vol_t;
+    peaBonus = peaBonus * factors[t] + r_t.tmi * vol_t;
+    peaBasisAcc += r_t.tmi * vol_t;
 
     annual.push({
       year: t,
@@ -190,13 +240,13 @@ export function simulate(
   // Fiscalité de sortie
   const PV_peg = Math.max(0, P_peg - basisPeg);
   const PV_per = Math.max(0, P_per - basisPer);
-  const peaBasisNominal = tmi * volCumul;
+  const peaBasisNominal = tmiVaries ? peaBasisAcc : tmi * volCumul;
   const PV_pea = Math.max(0, peaBonus - peaBasisNominal);
 
-  const tax_PEG_exit = PV_peg * csgPV;
-  const tax_PER_IR = tmi * volCumul;
-  const tax_PER_PFU = PV_per * pfuPER;
-  const tax_PEA_exit = PV_pea * csgPEA;
+  const tax_PEG_exit = PV_peg * exit.csgPlusValue;
+  const tax_PER_IR = exit.tmi * volCumul;
+  const tax_PER_PFU = PV_per * exit.pfuPER;
+  const tax_PEA_exit = PV_pea * exit.csgPEA;
   const tax_total =
     tax_PEG_exit + tax_PER_IR + tax_PER_PFU + tax_PEA_exit;
 
