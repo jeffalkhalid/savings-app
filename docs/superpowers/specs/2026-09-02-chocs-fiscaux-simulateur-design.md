@@ -158,8 +158,10 @@ dans le même sélecteur, la même liste et le même bouton de retrait.
   horizon nul.
 - `simulator.test.ts` : les trois snapshots restent **inchangés**. Nouveaux cas : un PFU relevé réduit
   le net des stratégies PER et **laisse le PEG pur inchangé** — c'est le test qui prouve que le choc
-  frappe la bonne assiette ; un abondement supprimé en année 0 réduit toutes les stratégies qui le
-  captent et **laisse « PER pur » inchangée** ; une TMI datée change le résultat, et la base du bonus
+  frappe la bonne assiette ; un abondement supprimé en année 0 ramène le versement annuel à
+  `I + P + V` exactement, vérifié sur `annual[t].K_PEG` — et non « laisse PER pur inchangée », que
+  j'avais écrit à tort : `K_PER_net` capte lui aussi un abondement, donc la stratégie PER pure est
+  touchée comme les autres ; une TMI datée change le résultat, et la base du bonus
   PEA n'est plus le produit scalaire — le test qui échouerait si l'accumulateur n'existait pas ; un
   choc fiscal et un krach la même année se cumulent.
 - `npx tsc --noEmit`, `npm run test`, `npm run build`.
