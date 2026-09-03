@@ -16,7 +16,12 @@ export type FiscalRates = {
 export type PolicyShock =
   /** À partir de `fromYear`, les taux nommés remplacent les précédents. */
   | { kind: "fiscalite"; fromYear: number; rates: Partial<FiscalRates> }
-  /** À partir de `fromYear`, l'abondement calculé est multiplié par `factor`. */
+  /**
+   * À partir de `fromYear`, l'abondement calculé est REMPLACÉ par
+   * `abondement_base × factor` — ce n'est pas une multiplication qui se
+   * compose choc après choc, chaque facteur se lit contre le barème
+   * d'origine (voir `abondementFactors` ci-dessous).
+   */
   | { kind: "abondement"; fromYear: number; factor: number };
 
 /** Année à laquelle un choc prend effet, quel que soit son type. */
@@ -64,9 +69,12 @@ export function abondementFactors(
   // REMPLACEMENT et non multiplication : chaque facteur se lit par rapport au
   // barème d'origine, donc « divisé par deux » puis « supprimé » donne 0,5 puis
   // 0 — et non 0 dès la première fenêtre par accumulation.
+  // Clampé à 0 : un facteur négatif ferait de l'abondement une CONTRIBUTION du
+  // salarié vers l'employeur, ce qui n'existe pas. Le panneau clampe déjà côté
+  // UI, mais le module reste pur et doit tenir la garantie seul.
   for (const s of sorted) {
     for (let t = Math.max(0, s.fromYear); t < n; t++) {
-      out[t] = s.factor;
+      out[t] = Math.max(0, s.factor);
     }
   }
   return out;

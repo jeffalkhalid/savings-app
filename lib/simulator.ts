@@ -121,10 +121,12 @@ export function simulate(
     }
 
     const r_t = rates[t] ?? baseRates;
-    // `?? 1` pour la même raison que `rates[t] ?? baseRates` ci-dessus : les
-    // deux tableaux sont dimensionnés sur `Math.round(years)` alors que la
-    // boucle court jusqu'à `years`. Sur un horizon entier — le seul que
-    // l'écran produise — ces garde-fous ne servent jamais.
+    // `?? baseRates` / `?? 1` sont du ceinture-et-bretelles sur un chemin
+    // inatteignable : `rates` et `abondF` sont dimensionnés sur
+    // `Math.round(years)`, mais `new Array(years).fill(0)` ci-dessus lève
+    // déjà un RangeError pour un horizon non entier, avant que `t` n'atteigne
+    // jamais un index hors bornes ici. Gardés par prudence, pas parce que ce
+    // cas se produit.
     const abondPEG_t = baseAbondPEG * (abondF[t] ?? 1);
     const abondPER_t = baseAbondPER * (abondF[t] ?? 1);
     // CSG 9.7% applies ONLY to the abondement employeur (not to I, P, V).
@@ -168,6 +170,11 @@ export function simulate(
     let M_net = 0;
 
     if (mature > 0) {
+      // Clampé à 0 : un choc d'abondement au-delà d'environ ×3,9, ou un
+      // `plafondPEG` réglé sous l'abondement du barème, rendraient sinon
+      // `M_cap_gross` négatif — l'employeur « reprendrait » de l'argent sur le
+      // recyclage, ce qui n'a pas de sens. Ce plancher existe même sans choc :
+      // le slider de plafond seul peut descendre sous l'abondement de base.
       const M_cap_gross = Math.max(0, plafondPEG - (using ? abondPEG_t : 0));
       if (smart) {
         // Sans abondement de recyclage, retirer ne rapporte plus rien et ne

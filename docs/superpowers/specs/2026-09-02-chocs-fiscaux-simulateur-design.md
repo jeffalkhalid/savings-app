@@ -119,11 +119,19 @@ export function exitRates(rates: FiscalRates[], base: FiscalRates): FiscalRates;
 - `peaBasisNominal` devient un accumulateur `Σ tmi_t × vol_t`, **sauf** quand aucun choc ne fait varier
   la TMI, auquel cas l'expression scalaire d'aujourd'hui est conservée telle quelle (§3.1).
 
-### 5.1 Le chemin sans choc reste bit à bit identique
+### 5.1 Le chemin sans choc reste bit à bit identique — sous condition
 
 Même garantie et même méthode que le chantier précédent : **structurelle**, pas seulement testée. Les
 trois snapshots de caractérisation de `lib/simulator.test.ts` doivent passer **inchangés**, et
 `vitest --update` reste interdit sur toute la branche.
+
+Cette garantie vaut pour `plafondPEG >= abondement` (l'abondement effectivement calculé, celui du
+barème une fois un éventuel facteur de choc appliqué). En dessous, `M_cap_gross =
+plafondPEG − abondPEG_t` deviendrait négatif, et le moteur clampe désormais ce plancher à zéro — y
+compris **sans aucun choc posé**, dès que le curseur de plafond seul descend sous l'abondement du
+barème par défaut. Ce n'est pas une régression du bit-à-bit : c'est la correction délibérée d'un bug
+préexistant où un plafond bas faisait « reprendre » de l'argent au salarié sur le recyclage, ce qui
+n'a pas de sens économique. Au-dessus du seuil, rien ne change au bit près.
 
 ## 6. L'écran
 

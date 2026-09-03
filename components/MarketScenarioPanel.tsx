@@ -16,20 +16,26 @@ const RATE_LABELS: { key: keyof FiscalRates; label: string }[] = [
   { key: "csgPEA", label: "CSG PEA" },
 ];
 
-function describe(s: ScenarioShock): string {
+const fr = (n: number) => n.toLocaleString("fr-FR");
+
+function describe(s: ScenarioShock, baseRates: FiscalRates): string {
   if (s.kind === "krach")
     return `Krach de ${Math.round(s.dropPct * 100)} % en année ${s.atYear}`;
   if (s.kind === "rendement")
-    return `Rendement de ${Math.round(s.rate * 1000) / 10} % pendant ${
+    return `Rendement de ${fr(Math.round(s.rate * 1000) / 10)} % pendant ${
       s.years
     } an${s.years > 1 ? "s" : ""} dès l'année ${s.startYear}`;
   if (s.kind === "abondement")
     return s.factor === 0
       ? `Abondement supprimé dès l'année ${s.fromYear}`
-      : `Abondement × ${s.factor} dès l'année ${s.fromYear}`;
-  // Un choc fiscal ne nomme que les taux qu'il change.
+      : `Abondement × ${fr(s.factor)} dès l'année ${s.fromYear}`;
+  // Un choc fiscal ne nomme que les taux qu'il change, ancien taux -> nouveau.
   const changed = RATE_LABELS.filter((r) => s.rates[r.key] !== undefined)
-    .map((r) => `${r.label} ${Math.round((s.rates[r.key] as number) * 1000) / 10} %`)
+    .map((r) => {
+      const from = fr(Math.round(baseRates[r.key] * 1000) / 10);
+      const to = fr(Math.round((s.rates[r.key] as number) * 1000) / 10);
+      return `${r.label} ${from} → ${to} %`;
+    })
     .join(" · ");
   return `Fiscalité dès l'année ${s.fromYear} · ${changed || "aucun taux"}`;
 }
@@ -48,10 +54,13 @@ export function outOfHorizon(s: ScenarioShock, years: number): boolean {
 export function MarketScenarioPanel({
   shocks,
   years,
+  baseRates,
   onChange,
 }: {
   shocks: ScenarioShock[];
   years: number;
+  /** Taux de fiscalité en vigueur avant tout choc, pour afficher « ancien → nouveau ». */
+  baseRates: FiscalRates;
   onChange: (next: ScenarioShock[]) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -86,7 +95,7 @@ export function MarketScenarioPanel({
       s = {
         kind: "fiscalite",
         fromYear: year,
-        rates: { [rateKey]: Math.max(0, ratePct) / 100 },
+        rates: { [rateKey]: Math.min(100, Math.max(0, ratePct)) / 100 },
       };
     }
     onChange([...shocks, s]);
@@ -131,7 +140,7 @@ export function MarketScenarioPanel({
                 orphan ? "text-ink-muted line-through" : "text-ink"
               }`}
             >
-              {describe(s)}
+              {describe(s, baseRates)}
             </span>
             {orphan && (
               <span className="text-[11px] text-accent whitespace-nowrap">

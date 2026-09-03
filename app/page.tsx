@@ -99,6 +99,13 @@ export default function Page() {
           <MarketScenarioPanel
             shocks={shocks}
             years={params.years}
+            baseRates={{
+              csgPlusValue: params.csgPlusValue,
+              csgAbondement: params.csgAbondement,
+              tmi: params.tmi,
+              pfuPER: params.pfuPER,
+              csgPEA: params.csgPEA,
+            }}
             onChange={setShocks}
           />
         </div>

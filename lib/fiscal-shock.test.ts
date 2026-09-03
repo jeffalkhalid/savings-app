@@ -121,6 +121,14 @@ describe("abondementFactors", () => {
     const out = a([{ kind: "abondement", fromYear: 40, factor: 0 }]);
     for (const f of out) expect(f).toBe(1);
   });
+
+  it("clampe un facteur négatif à 0 : l'employeur ne reprend jamais d'argent", () => {
+    // Le panneau clampe déjà `factor` côté UI, mais `lib/` reste pur et doit
+    // tenir la garantie seule, sans compter sur l'appelant.
+    const out = a([{ kind: "abondement", fromYear: 2, factor: -1 }]);
+    expect(out[2]).toBe(0);
+    expect(out[9]).toBe(0);
+  });
 });
 
 describe("exitRates", () => {
