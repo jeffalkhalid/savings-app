@@ -8,33 +8,52 @@ import { StrategyRanking } from "@/components/StrategyRanking";
 import { ComparisonChart } from "@/components/ComparisonChart";
 import { StrategyDetail } from "@/components/StrategyDetail";
 import { DataTables } from "@/components/DataTables";
-import { MarketScenarioPanel } from "@/components/MarketScenarioPanel";
+import { MarketScenarioPanel, outOfHorizon } from "@/components/MarketScenarioPanel";
+import type { ScenarioShock } from "@/components/MarketScenarioPanel";
 import { simulateAll } from "@/lib/simulator";
 import { DEFAULT_PARAMS } from "@/lib/strategies";
 import type { SimulationParams, StrategyKey } from "@/lib/types";
 import type { MarketShock } from "@/lib/market-shock";
+import type { PolicyShock } from "@/lib/fiscal-shock";
 
 export default function Page() {
   const [params, setParams] = useState<SimulationParams>(DEFAULT_PARAMS);
   const [selected, setSelected] = useState<StrategyKey>("F");
-  const [shocks, setShocks] = useState<MarketShock[]>([]);
+  const [shocks, setShocks] = useState<ScenarioShock[]>([]);
 
-  // La référence est calculée SANS chocs, explicitement : elle ne doit pas
-  // dépendre de ce que `params` pourrait porter.
+  const marketShocks = useMemo(
+    () =>
+      shocks.filter(
+        (s): s is MarketShock => s.kind === "krach" || s.kind === "rendement"
+      ),
+    [shocks]
+  );
+  const policyShocks = useMemo(
+    () =>
+      shocks.filter(
+        (s): s is PolicyShock =>
+          s.kind === "fiscalite" || s.kind === "abondement"
+      ),
+    [shocks]
+  );
+
+  // La référence est calculée SANS aucun choc, explicitement.
   const results = useMemo(
-    () => simulateAll({ ...params, shocks: [] }),
+    () => simulateAll({ ...params, shocks: [], policyShocks: [] }),
     [params]
   );
-  // Un scénario dont AUCUN choc n'entre dans l'horizon ne doit rien afficher :
-  // ni colonne « Avec chocs », ni marqueur — sinon on annonce un écart de 0 €
-  // là où rien n'a réellement été simulé sous choc.
-  const effective = shocks.some((s) => {
-    const y = s.kind === "krach" ? s.atYear : s.startYear;
-    return y >= 0 && y < params.years;
-  });
+
+  // Un scénario dont TOUS les chocs sont hors horizon ne doit rien afficher.
+  // On réutilise le prédicat du panneau plutôt que de le réécrire : deux
+  // définitions de « hors horizon » finiraient par diverger, et l'écran
+  // afficherait alors une colonne pour un choc barré, ou l'inverse.
+  const effective = shocks.some((s) => !outOfHorizon(s, params.years));
   const shockedResults = useMemo(
-    () => (effective ? simulateAll({ ...params, shocks }) : null),
-    [params, shocks, effective]
+    () =>
+      effective
+        ? simulateAll({ ...params, shocks: marketShocks, policyShocks })
+        : null,
+    [params, marketShocks, policyShocks, effective]
   );
 
   return (
