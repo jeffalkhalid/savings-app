@@ -135,6 +135,11 @@ export function simulate(
     const K_PEG_net_t = I + P + V + abondPEG_t * (1 - r_t.csgAbondement);
     const K_PER_net_t =
       I + P + V + Math.min(abondPER_t, plafondPER) * (1 - r_t.csgAbondement);
+    // Le taux d'abondement du recyclage est de l'argent employeur au même titre
+    // que le versement : un facteur qui supprime l'abondement doit le supprimer
+    // aussi, sans quoi « supprimé » ferait toucher DAVANTAGE (le plafond libéré
+    // n'étant plus consommé par le versement).
+    const abondRate_t = 0.2 * (abondF[t] ?? 1);
 
     const K_peg_t = using ? K_PEG_net_t : 0;
     const K_per_t = using ? 0 : K_PER_net_t;
@@ -163,16 +168,21 @@ export function simulate(
     let M_net = 0;
 
     if (mature > 0) {
-      const M_cap_gross = plafondPEG - (using ? abondPEG_t : 0);
+      const M_cap_gross = Math.max(0, plafondPEG - (using ? abondPEG_t : 0));
       if (smart) {
-        const targetW = M_cap_gross / 0.2 / (1 - gainFrac * r_t.csgPlusValue);
+        // Sans abondement de recyclage, retirer ne rapporte plus rien et ne
+        // coûte que la CSG : la cible est nulle.
+        const targetW =
+          abondRate_t > 0
+            ? M_cap_gross / abondRate_t / (1 - gainFrac * r_t.csgPlusValue)
+            : 0;
         W = Math.min(targetW, mature);
       } else {
         W = mature;
       }
       N = W * gainFrac * r_t.csgPlusValue;
       netRedeposit = W - N;
-      M_gross = Math.min(M_cap_gross, netRedeposit * 0.2);
+      M_gross = Math.min(M_cap_gross, netRedeposit * abondRate_t);
       M_net = M_gross * (1 - r_t.csgAbondement);
 
       if (

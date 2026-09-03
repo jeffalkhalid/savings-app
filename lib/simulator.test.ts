@@ -394,4 +394,28 @@ describe("simulateAll sous choc de politique", () => {
     const s = both.find((x) => x.strategy === "B")!;
     expect(s.net_total).toBeLessThan(b.net_total);
   });
+
+  it("un abondement supprimé supprime aussi l'abondement de recyclage", () => {
+    // Le test que le cas « année 0 » ne pouvait pas voir : à l'année 0 rien
+    // n'est encore arrivé à maturité. C'est au recyclage, à partir de la
+    // sixième année, que le taux de 20 % entre en jeu — et un abondement
+    // supprimé doit l'annuler, pas libérer du plafond.
+    const out = simulate("A", {
+      ...DEFAULT_PARAMS,
+      policyShocks: [{ kind: "abondement" as const, fromYear: 0, factor: 0 }],
+    });
+    const ref = simulate("A", DEFAULT_PARAMS);
+    for (const y of out.annual) {
+      expect(y.M_gross).toBe(0);
+      expect(y.M_net).toBe(0);
+    }
+    expect(ref.annual[6].M_gross).toBeGreaterThan(0);
+    expect(out.summary.net_total).toBeLessThan(ref.summary.net_total);
+  });
+
+  it("l'assiette du PFU est bien vide pour la stratégie PEG", () => {
+    // Épingle la prémisse du test d'assiette : il ne discrimine que parce que
+    // la poche PER de A reste vide.
+    expect(simulate("A", DEFAULT_PARAMS).summary.PV_PER).toBe(0);
+  });
 });
