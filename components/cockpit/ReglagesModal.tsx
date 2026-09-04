@@ -11,6 +11,7 @@ import { CategoriesModal } from "@/components/cockpit/CategoriesModal";
 import { useIsAdmin } from "@/lib/cockpit/hooks";
 import { AdminsModal } from "@/components/cockpit/AdminsModal";
 import { SalaryShiftModal } from "@/components/cockpit/SalaryShiftModal";
+import { WipeTransactionsModal } from "@/components/cockpit/WipeTransactionsModal";
 import { planRekey } from "@/lib/cockpit/recurring-rekey";
 import {
   listAllRecurringCharges,
@@ -33,6 +34,7 @@ export function ReglagesModal({
   onSaved,
   onCategoriesChanged,
   onSettingsChanged,
+  onWiped,
 }: {
   userId: string;
   settings: UserSettings;
@@ -42,6 +44,7 @@ export function ReglagesModal({
   onSaved: () => void;
   onCategoriesChanged: () => void;
   onSettingsChanged: () => void;
+  onWiped: () => void;
 }) {
   const { pref, setPref } = useTheme();
   const [goalPct, setGoalPct] = useState(
@@ -54,6 +57,7 @@ export function ReglagesModal({
   const { isAdmin } = useIsAdmin();
   const [showAdmins, setShowAdmins] = useState(false);
   const [showSalaryShift, setShowSalaryShift] = useState(false);
+  const [showWipe, setShowWipe] = useState(false);
   const [rekeying, setRekeying] = useState(false);
   const [rekeyNote, setRekeyNote] = useState("");
 
@@ -215,10 +219,25 @@ export function ReglagesModal({
               Gérer les admins
             </button>
           )}
+          {/* Séparé de la déconnexion, et légendé : deux actions de nature très
+              différente ne doivent pas se toucher, encore moins dans la même
+              couleur. */}
+          <div className="mt-2 border-t border-rule pt-4">
+            <button
+              type="button"
+              onClick={() => setShowWipe(true)}
+              className="text-accent text-sm py-1 text-left"
+            >
+              Vider toutes les opérations
+            </button>
+            <p className="text-[11.5px] text-ink-muted">
+              Définitif. Règles de classement, engagements et budgets conservés.
+            </p>
+          </div>
           <button
             type="button"
             onClick={() => supabase.auth.signOut()}
-            className="text-accent text-sm py-2 mt-2 border-t border-rule pt-4"
+            className="text-ink-muted text-sm py-2 mt-2 border-t border-rule pt-4 text-left"
           >
             Déconnexion
           </button>
@@ -235,6 +254,17 @@ export function ReglagesModal({
     )}
     {showAdmins && (
       <AdminsModal userId={userId} onClose={() => setShowAdmins(false)} />
+    )}
+    {showWipe && (
+      <WipeTransactionsModal
+        userId={userId}
+        count={allTxns.length}
+        onWiped={() => {
+          setShowWipe(false);
+          onWiped();
+        }}
+        onClose={() => setShowWipe(false)}
+      />
     )}
     {showSalaryShift && (
       <SalaryShiftModal
