@@ -429,6 +429,13 @@ export default function DashboardPage() {
           allTxns={allTxns}
           onCategoriesChanged={refetchCategories}
           onSettingsChanged={refetchSettings}
+          onWiped={() => {
+            // Les deux listes : celle du mois affiché et l'historique complet
+            // dont vivent Évolution, Commerçants, Dérive et les détections.
+            refetch();
+            refetchAllTxns();
+            setShowSettings(false);
+          }}
           onClose={() => setShowSettings(false)}
           onSaved={() => {
             refetchSettings();

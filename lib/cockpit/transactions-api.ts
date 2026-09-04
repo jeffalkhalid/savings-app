@@ -105,6 +105,25 @@ export async function deleteTransaction(id: string): Promise<void> {
  * échoue, les précédents sont déjà supprimés et l'appelant doit recharger —
  * c'est pourquoi `useBulkDelete` appelle `onDone()` même sur le chemin d'erreur.
  */
+/**
+ * Vide toutes les opérations d'un utilisateur.
+ *
+ * Le filtre sur `user_id` est redondant avec la RLS, et il est là quand même :
+ * il rend l'intention lisible, et une politique mal configurée ne doit pas être
+ * la seule chose entre l'utilisateur et la table entière.
+ *
+ * Ce qui SURVIT : catégories, règles de classement, engagements, budgets,
+ * objectifs, patrimoine, réglages. Rien ne dépend en cascade des transactions —
+ * `goal_id` pointe des transactions vers les objectifs, pas l'inverse.
+ */
+export async function deleteAllTransactions(userId: string): Promise<void> {
+  const { error } = await supabase
+    .from("transactions")
+    .delete()
+    .eq("user_id", userId);
+  if (error) throw new Error(error.message);
+}
+
 export async function deleteTransactions(ids: string[]): Promise<void> {
   const CHUNK = 200;
   for (let i = 0; i < ids.length; i += CHUNK) {
